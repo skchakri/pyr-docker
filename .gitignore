@@ -1,0 +1,12 @@
+# Secrets and keys
+*.key
+*.pem
+.env*
+
+# Rails temp/cache/log
+dashboard/tmp/
+dashboard/log/
+dashboard/storage/
+
+# Node modules
+node_modules/

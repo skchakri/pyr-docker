@@ -1,0 +1,4 @@
+development:
+  rules_event_processing_strategy: redis
+  rails_cache_uri: redis://127.0.0.1:6379/0
+  mongodb_auth_source: admin

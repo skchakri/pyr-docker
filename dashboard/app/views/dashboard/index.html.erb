@@ -1,0 +1,320 @@
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">P</div>
+    <h1>Pyr Dashboard <span>/ Docker Clients</span></h1>
+  </div>
+  <div class="header-actions">
+    <div class="status-summary" id="statusSummary"></div>
+    <button class="btn btn-sm" onclick="refreshClients()" id="refreshBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      Refresh
+    </button>
+  </div>
+</header>
+
+<main class="main" id="main">
+  <div class="loading" id="loading">
+    <div class="spinner" style="width:20px;height:20px;border:2px solid transparent;border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;"></div>
+    Loading clients...
+  </div>
+  <div class="grid" id="grid" style="display:none;"></div>
+</main>
+
+<div class="terminal-panel" id="terminalPanel">
+  <div class="terminal-bar">
+    <div class="terminal-bar-left">
+      <span class="type-badge" id="terminalTypeBadge">console</span>
+      <span id="terminalTitle">Terminal</span>
+    </div>
+    <button class="close-btn" onclick="closeTerminal()" title="Close (Esc)">&times;</button>
+  </div>
+  <div class="terminal-body" id="terminalBody"></div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+
+<script>
+  const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content;
+  let clients = [];
+  let currentSubscription = null;
+  let currentTerminal = null;
+  let refreshTimer = null;
+
+  // ---- Minimal ActionCable client ----
+  class CableSubscription {
+    constructor(channelParams, callbacks) {
+      this.identifier = JSON.stringify(channelParams);
+      this.callbacks = callbacks;
+      this.ws = null;
+      this._connect();
+    }
+
+    _connect() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      this.ws = new WebSocket(proto + '//' + location.host + '/cable');
+
+      this.ws.onopen = () => {
+        this.ws.send(JSON.stringify({ command: 'subscribe', identifier: this.identifier }));
+      };
+
+      this.ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'ping' || msg.type === 'welcome') return;
+        if (msg.type === 'confirm_subscription') {
+          if (this.callbacks.connected) this.callbacks.connected();
+          return;
+        }
+        if (msg.type === 'reject_subscription') {
+          if (this.callbacks.disconnected) this.callbacks.disconnected();
+          return;
+        }
+        if (msg.message && this.callbacks.received) {
+          this.callbacks.received(msg.message);
+        }
+      };
+
+      this.ws.onclose = () => {
+        if (this.callbacks.disconnected) this.callbacks.disconnected();
+      };
+    }
+
+    send(data) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          command: 'message',
+          identifier: this.identifier,
+          data: JSON.stringify(data)
+        }));
+      }
+    }
+
+    unsubscribe() {
+      if (this.ws) {
+        if (this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({ command: 'unsubscribe', identifier: this.identifier }));
+        }
+        this.ws.close();
+        this.ws = null;
+      }
+    }
+  }
+
+  // ---- Toast ----
+  function toast(message, type) {
+    type = type || 'info';
+    const el = document.createElement('div');
+    el.className = 'toast toast-' + type;
+    el.textContent = message;
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(function() { el.remove(); }, 3500);
+  }
+
+  // ---- API ----
+  async function fetchClients() {
+    const res = await fetch('/api/clients');
+    return res.json();
+  }
+
+  async function clientAction(name, action) {
+    const btn = document.querySelector('[data-action="' + action + '-' + name + '"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> ' + action + '...';
+    }
+    try {
+      const res = await fetch('/api/clients/' + name + '/' + action, {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': CSRF_TOKEN }
+      });
+      const data = await res.json();
+      toast(name + ': ' + action + ' ' + (data.success ? 'succeeded' : 'failed'), data.success ? 'success' : 'error');
+      setTimeout(refreshClients, 1500);
+    } catch(err) {
+      toast(name + ': ' + action + ' failed - ' + err.message, 'error');
+    }
+    if (btn) btn.disabled = false;
+  }
+
+  // ---- Render ----
+  function getStateBadge(state) {
+    if (state === 'running')    return '<span class="badge badge-running">Running</span>';
+    if (state === 'exited')     return '<span class="badge badge-exited">Exited</span>';
+    if (state === 'restarting') return '<span class="badge badge-starting">Restarting</span>';
+    if (state === 'created')    return '<span class="badge badge-starting">Created</span>';
+    return '<span class="badge badge-notfound">Not Found</span>';
+  }
+
+  function renderClients(data) {
+    clients = data;
+    const grid = document.getElementById('grid');
+    document.getElementById('loading').style.display = 'none';
+    grid.style.display = 'grid';
+
+    const running = data.filter(function(c) { return c.state === 'running'; }).length;
+    const stopped = data.length - running;
+    document.getElementById('statusSummary').innerHTML =
+      '<span class="stat"><span class="dot green"></span>' + running + ' running</span>' +
+      '<span class="stat"><span class="dot red"></span>' + stopped + ' stopped</span>';
+
+    grid.innerHTML = data.map(function(c) {
+      const isRunning = c.state === 'running';
+      const disabledAttr = isRunning ? '' : 'disabled';
+      const accessStyle = isRunning ? '' : 'style="opacity:0.4;pointer-events:none"';
+
+      return '<div class="card">' +
+        '<div class="card-header"><div class="card-title">' +
+          '<h3>' + c.name + '</h3>' + getStateBadge(c.state) +
+        '</div></div>' +
+        '<div class="card-meta">' +
+          '<div class="meta-item"><span class="meta-label">Port</span><span class="meta-value">' + c.port + '</span></div>' +
+          '<div class="meta-item"><span class="meta-label">DB</span><span class="meta-value">' + c.database + '</span></div>' +
+          '<div class="meta-item"><span class="meta-label">Container</span><span class="meta-value">' + c.container_name + '</span></div>' +
+        '</div>' +
+        '<div class="card-status" title="' + c.status + '">' + c.status + '</div>' +
+        '<div class="card-actions">' +
+          (isRunning
+            ? '<button class="btn btn-sm btn-red" data-action="stop-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'stop\')">' +
+                '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"></rect></svg> Stop</button>' +
+              '<button class="btn btn-sm btn-yellow" data-action="restart-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'restart\')">' +
+                '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg> Restart</button>'
+            : '<button class="btn btn-sm btn-green" data-action="start-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'start\')">' +
+                '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Start</button>'
+          ) +
+          '<a class="btn btn-sm btn-accent" href="http://localhost:' + c.port + '" target="_blank" ' + accessStyle + '>' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> Access</a>' +
+          '<button class="btn btn-sm" onclick="openTerminal(\'' + c.name + '\',\'console\')" ' + disabledAttr + ' title="Rails Console">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Console</button>' +
+          '<button class="btn btn-sm" onclick="openTerminal(\'' + c.name + '\',\'logs\')" ' + disabledAttr + ' title="View Logs">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Logs</button>' +
+          '<button class="btn btn-sm btn-green" onclick="openTerminal(\'' + c.name + '\',\'terminal\')" title="Host terminal (claude, git, etc.)">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8l4 4-4 4"></path><line x1="12" y1="16" x2="18" y2="16"></line></svg> Terminal</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  // ---- Terminal via Action Cable ----
+  function openTerminal(clientName, type) {
+    closeTerminal();
+
+    const panel = document.getElementById('terminalPanel');
+    const body  = document.getElementById('terminalBody');
+    const badge = document.getElementById('terminalTypeBadge');
+    const title = document.getElementById('terminalTitle');
+
+    badge.className = 'type-badge ' + type;
+    badge.textContent = type;
+    title.textContent = clientName;
+
+    body.innerHTML = '';
+    panel.classList.add('open');
+    document.getElementById('main').classList.add('terminal-open');
+
+    const term = new Terminal({
+      theme: {
+        background: '#0c0e14',
+        foreground: '#e1e4ed',
+        cursor: '#6c8aff',
+        selectionBackground: 'rgba(108, 138, 255, 0.3)',
+        black: '#1a1e2a', red: '#f87171', green: '#34d399', yellow: '#fbbf24',
+        blue: '#6c8aff', magenta: '#c084fc', cyan: '#22d3ee', white: '#e1e4ed',
+        brightBlack: '#7a8198', brightRed: '#fca5a5', brightGreen: '#6ee7b7',
+        brightYellow: '#fde68a', brightBlue: '#93b4ff', brightMagenta: '#d8b4fe',
+        brightCyan: '#67e8f9', brightWhite: '#f8fafc'
+      },
+      fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
+      fontSize: 13,
+      lineHeight: 1.3,
+      cursorBlink: true,
+      scrollback: 5000
+    });
+
+    const fitAddon = new FitAddon.FitAddon();
+    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+    term.loadAddon(fitAddon);
+    term.loadAddon(webLinksAddon);
+    term.open(body);
+
+    setTimeout(function() {
+      fitAddon.fit();
+
+      // Subscribe to Action Cable channel
+      const subscription = new CableSubscription(
+        { channel: 'TerminalChannel', client: clientName, type: type, cols: term.cols, rows: term.rows },
+        {
+          received: function(data) {
+            if (data.output) term.write(data.output);
+            if (data.error) {
+              term.write('\r\n\x1b[31m' + data.error + '\x1b[0m\r\n');
+            }
+          },
+          connected: function() {
+            term.focus();
+          },
+          disconnected: function() {
+            term.write('\r\n\x1b[90m[Disconnected]\x1b[0m\r\n');
+          }
+        }
+      );
+
+      // Send terminal input to server
+      term.onData(function(data) {
+        subscription.send({ input: data });
+      });
+
+      // Handle resize
+      const resizeObserver = new ResizeObserver(function() {
+        fitAddon.fit();
+        subscription.send({ type: 'resize', cols: term.cols, rows: term.rows });
+      });
+      resizeObserver.observe(body);
+
+      currentTerminal = { term: term, fitAddon: fitAddon, resizeObserver: resizeObserver };
+      currentSubscription = subscription;
+    }, 50);
+  }
+
+  function closeTerminal() {
+    if (currentSubscription) {
+      currentSubscription.unsubscribe();
+      currentSubscription = null;
+    }
+    if (currentTerminal) {
+      currentTerminal.resizeObserver.disconnect();
+      currentTerminal.term.dispose();
+      currentTerminal = null;
+    }
+    document.getElementById('terminalPanel').classList.remove('open');
+    document.getElementById('main').classList.remove('terminal-open');
+    document.getElementById('terminalBody').innerHTML = '';
+  }
+
+  // ---- Refresh ----
+  async function refreshClients() {
+    try {
+      const data = await fetchClients();
+      renderClients(data);
+    } catch(err) {
+      toast('Failed to fetch clients: ' + err.message, 'error');
+    }
+  }
+
+  function startAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(refreshClients, 8000);
+  }
+
+  // ---- Init ----
+  refreshClients().then(startAutoRefresh);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && currentTerminal) closeTerminal();
+  });
+</script>

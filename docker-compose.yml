@@ -1,0 +1,152 @@
+x-common: &common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  network_mode: host
+  volumes:
+    - /home/kalyan/platform/pyr:/opt/pyr
+    - bundle_cache:/usr/local/bundle
+    - ~/.ssh:/root/.ssh:ro
+    - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
+    - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+  restart: unless-stopped
+
+x-common-env: &common-env
+  RAILS_ENV: development
+  DOCKER: "true"
+  RULES_DISABLED: "false"
+  DATABASE_HOST: 127.0.0.1
+  DATABASE_PORT: 3306
+  DATABASE_USER: root
+  DATABASE_PASSWORD: password
+  MONGODB_USER: root
+  MONGODB_PASSWORD: password
+  MONGODB_AUTH_SOURCE: admin
+  MONGODB_SERVER: 127.0.0.1:27017
+  ELASTICSEARCH_URL: http://127.0.0.1:9200
+
+x-command: &common-command /opt/pyr-docker/entrypoint.sh
+
+services:
+  # ==================== STAMPINUP (3003) ====================
+  stampinup:
+    <<: *common
+    container_name: pyr-stampinup
+    working_dir: /opt/pyr/clients/stampinup
+    volumes:
+      - /home/kalyan/platform/clients/stampinup/pyr:/opt/pyr
+      - bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
+      - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+    environment:
+      <<: *common-env
+      CLIENT: stampinup
+      PORT: "3003"
+      DATABASE_NAME: pyr_stampinup_dev
+      MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_stampinup_development?authSource=admin
+      REDIS_URL: redis://127.0.0.1:6379/0
+    command: *common-command
+
+  # ==================== PARTYLITE (3005) ====================
+  partylite:
+    <<: *common
+    container_name: pyr-partylite
+    working_dir: /opt/pyr/clients/partylite
+    volumes:
+      - /home/kalyan/platform/clients/partylite/pyr:/opt/pyr
+      - bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
+      - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+    environment:
+      <<: *common-env
+      CLIENT: partylite
+      PORT: "3005"
+      DATABASE_NAME: pyr_partylite_dev
+      MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_partylite_development?authSource=admin
+      REDIS_URL: redis://127.0.0.1:6379/1
+    command: *common-command
+
+  # ==================== AVON (3001) ====================
+  avon:
+    <<: *common
+    container_name: pyr-avon
+    working_dir: /opt/pyr/clients/avon
+    volumes:
+      - /home/kalyan/platform/clients/avon/pyr:/opt/pyr
+      - bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
+      - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+    environment:
+      <<: *common-env
+      CLIENT: avon
+      PORT: "3001"
+      DATABASE_NAME: pyr_avon_dev
+      MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_avon_development?authSource=admin
+      REDIS_URL: redis://127.0.0.1:6379/2
+    command: *common-command
+
+  # ==================== NATURESSUNSHINE (3002) ====================
+  naturessunshine:
+    <<: *common
+    container_name: pyr-naturessunshine
+    working_dir: /opt/pyr/clients/naturessunshine
+    volumes:
+      - /home/kalyan/platform/clients/naturessunshine/pyr:/opt/pyr
+      - bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
+      - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+    environment:
+      <<: *common-env
+      CLIENT: naturessunshine
+      PORT: "3002"
+      DATABASE_NAME: pyr_naturessunshine_dev
+      MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_naturessunshine_development?authSource=admin
+      REDIS_URL: redis://127.0.0.1:6379/3
+    command: *common-command
+
+  # ==================== MONAT (3004) ====================
+  monat:
+    <<: *common
+    container_name: pyr-monat
+    working_dir: /opt/pyr/clients/monat
+    volumes:
+      - /home/kalyan/platform/clients/monat/pyr:/opt/pyr
+      - bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
+      - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+    environment:
+      <<: *common-env
+      CLIENT: monat
+      PORT: "3004"
+      DATABASE_NAME: pyr_monat_dev
+      MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_monat_development?authSource=admin
+      REDIS_URL: redis://127.0.0.1:6379/4
+    command: *common-command
+
+  # ==================== KWIVERR (3006) ====================
+  kwiverr:
+    <<: *common
+    container_name: pyr-kwiverr
+    working_dir: /opt/pyr/clients/kwiverr
+    volumes:
+      - /home/kalyan/platform/clients/kwiverr/pyr:/opt/pyr
+      - bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
+      - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+    environment:
+      <<: *common-env
+      CLIENT: kwiverr
+      PORT: "3006"
+      DATABASE_NAME: pyr_kwiverr_dev
+      MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_kwiverr_development?authSource=admin
+      REDIS_URL: redis://127.0.0.1:6379/5
+    command: *common-command
+
+volumes:
+  bundle_cache:
