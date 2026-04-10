@@ -1,0 +1,42 @@
+FROM ruby:3.3.6-slim
+
+# Set locale
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+# Install system dependencies
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+    build-essential \
+    curl \
+    git \
+    imagemagick \
+    ghostscript \
+    libpq-dev \
+    libyaml-dev \
+    libvips \
+    libreoffice-writer-nogui \
+    libreoffice-calc-nogui \
+    pkg-config \
+    postgresql-client \
+    python3 \
+    python3-venv \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js (for importmap audit / JS tools)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Fix ImageMagick policy to allow PDF operations
+RUN sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true
+
+# Install bundler
+RUN gem install bundler
+
+WORKDIR /rails
+
+EXPOSE 1100
+
+CMD ["bash"]

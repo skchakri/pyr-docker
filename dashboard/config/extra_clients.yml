@@ -1,0 +1,10 @@
+ownsites:
+  name: ownsites
+  container_name: ownsites-web-1
+  compose_dir: /home/kalyan/platform/skchakri/ownsites
+  compose_service: web
+  port: "1700"
+  host_path: /home/kalyan/platform/skchakri/ownsites
+  database: ownsites_development
+  type: docker_compose
+

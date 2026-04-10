@@ -22,18 +22,15 @@
     Loading clients...
   </div>
   <div class="grid" id="grid" style="display:none;"></div>
-</main>
-
-<div class="terminal-panel" id="terminalPanel">
-  <div class="terminal-bar">
-    <div class="terminal-bar-left">
-      <span class="type-badge" id="terminalTypeBadge">console</span>
-      <span id="terminalTitle">Terminal</span>
+  <div class="terminal-panel" id="terminalPanel">
+    <div class="terminal-tab-bar">
+      <div class="terminal-client-tabs" id="clientTabs"></div>
+      <button class="close-btn" onclick="closeAllTerminals()" title="Close all (Esc)">&times;</button>
     </div>
-    <button class="close-btn" onclick="closeTerminal()" title="Close (Esc)">&times;</button>
+    <div class="terminal-type-bar" id="typeTabBar"></div>
+    <div class="terminal-panes" id="terminalPanes"></div>
   </div>
-  <div class="terminal-body" id="terminalBody"></div>
-</div>
+</main>
 
 <div class="toast-container" id="toastContainer"></div>
 
@@ -44,9 +41,9 @@
 <script>
   const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content;
   let clients = [];
-  let currentSubscription = null;
-  let currentTerminal = null;
+  let terminals = {};
   let refreshTimer = null;
+  const SESSION_KEY = 'pyr_open_terminals'; // localStorage key
 
   // ---- Minimal ActionCable client ----
   class CableSubscription {
@@ -173,12 +170,12 @@
         '<div class="card-header"><div class="card-title">' +
           '<h3>' + c.name + '</h3>' + getStateBadge(c.state) +
         '</div></div>' +
+        (c.branch ? '<div class="card-branch"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>' + c.branch + '</div>' : '') +
         '<div class="card-meta">' +
           '<div class="meta-item"><span class="meta-label">Port</span><span class="meta-value">' + c.port + '</span></div>' +
           '<div class="meta-item"><span class="meta-label">DB</span><span class="meta-value">' + c.database + '</span></div>' +
-          '<div class="meta-item"><span class="meta-label">Container</span><span class="meta-value">' + c.container_name + '</span></div>' +
+          '<div class="meta-item"><span class="meta-label">Uptime</span><span class="meta-value">' + c.status + '</span></div>' +
         '</div>' +
-        '<div class="card-status" title="' + c.status + '">' + c.status + '</div>' +
         '<div class="card-actions">' +
           (isRunning
             ? '<button class="btn btn-sm btn-red" data-action="stop-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'stop\')">' +
@@ -188,7 +185,7 @@
             : '<button class="btn btn-sm btn-green" data-action="start-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'start\')">' +
                 '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Start</button>'
           ) +
-          '<a class="btn btn-sm btn-accent" href="http://localhost:' + c.port + '" target="_blank" ' + accessStyle + '>' +
+          '<a class="btn btn-sm btn-accent" href="/api/clients/' + c.name + '/dev_login" target="_blank" ' + accessStyle + '>' +
             '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> Access</a>' +
           '<button class="btn btn-sm" onclick="openTerminal(\'' + c.name + '\',\'console\')" ' + disabledAttr + ' title="Rails Console">' +
             '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Console</button>' +
@@ -196,104 +193,209 @@
             '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Logs</button>' +
           '<button class="btn btn-sm btn-green" onclick="openTerminal(\'' + c.name + '\',\'terminal\')" title="Host terminal (claude, git, etc.)">' +
             '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8l4 4-4 4"></path><line x1="12" y1="16" x2="18" y2="16"></line></svg> Terminal</button>' +
+          '<button class="btn btn-sm btn-purple" onclick="openTerminal(\'' + c.name + '\',\'worker\')" ' + disabledAttr + ' title="Resque Worker">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M4.93 4.93a10 10 0 0 0 0 14.14"></path></svg> Worker</button>' +
+          '<button class="btn btn-sm btn-orange" onclick="openTerminal(\'' + c.name + '\',\'scheduler\')" ' + disabledAttr + ' title="Resque Scheduler">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Scheduler</button>' +
         '</div></div>';
     }).join('');
   }
 
-  // ---- Terminal via Action Cable ----
+  // ---- Tabbed Terminal System ----
+  // terminals[clientName][type] = { term, fitAddon, resizeObserver, subscription, paneEl, bodyEl }
+  const TERM_THEME = {
+    background: '#0c0e14', foreground: '#e1e4ed', cursor: '#6c8aff',
+    selectionBackground: 'rgba(108,138,255,0.3)',
+    black: '#1a1e2a', red: '#f87171', green: '#34d399', yellow: '#fbbf24',
+    blue: '#6c8aff', magenta: '#c084fc', cyan: '#22d3ee', white: '#e1e4ed',
+    brightBlack: '#7a8198', brightRed: '#fca5a5', brightGreen: '#6ee7b7',
+    brightYellow: '#fde68a', brightBlue: '#93b4ff', brightMagenta: '#d8b4fe',
+    brightCyan: '#67e8f9', brightWhite: '#f8fafc'
+  };
+
+  let activeClient = null;
+  let activeType   = null;
+
   function openTerminal(clientName, type) {
-    closeTerminal();
+    if (terminals[clientName] && terminals[clientName][type]) {
+      switchTo(clientName, type);
+      return;
+    }
+    if (!terminals[clientName]) terminals[clientName] = {};
 
-    const panel = document.getElementById('terminalPanel');
-    const body  = document.getElementById('terminalBody');
-    const badge = document.getElementById('terminalTypeBadge');
-    const title = document.getElementById('terminalTitle');
-
-    badge.className = 'type-badge ' + type;
-    badge.textContent = type;
-    title.textContent = clientName;
-
-    body.innerHTML = '';
-    panel.classList.add('open');
-    document.getElementById('main').classList.add('terminal-open');
+    const panes = document.getElementById('terminalPanes');
+    const paneEl = document.createElement('div');
+    paneEl.className = 'terminal-pane';
+    paneEl.style.display = 'none';
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'terminal-body';
+    paneEl.appendChild(bodyEl);
+    panes.appendChild(paneEl);
 
     const term = new Terminal({
-      theme: {
-        background: '#0c0e14',
-        foreground: '#e1e4ed',
-        cursor: '#6c8aff',
-        selectionBackground: 'rgba(108, 138, 255, 0.3)',
-        black: '#1a1e2a', red: '#f87171', green: '#34d399', yellow: '#fbbf24',
-        blue: '#6c8aff', magenta: '#c084fc', cyan: '#22d3ee', white: '#e1e4ed',
-        brightBlack: '#7a8198', brightRed: '#fca5a5', brightGreen: '#6ee7b7',
-        brightYellow: '#fde68a', brightBlue: '#93b4ff', brightMagenta: '#d8b4fe',
-        brightCyan: '#67e8f9', brightWhite: '#f8fafc'
-      },
-      fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
-      fontSize: 13,
-      lineHeight: 1.3,
-      cursorBlink: true,
-      scrollback: 5000
+      theme: TERM_THEME,
+      fontFamily: "'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',monospace",
+      fontSize: 13, lineHeight: 1.3, cursorBlink: true, scrollback: 5000
     });
-
     const fitAddon = new FitAddon.FitAddon();
-    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
     term.loadAddon(fitAddon);
-    term.loadAddon(webLinksAddon);
-    term.open(body);
+    term.loadAddon(new WebLinksAddon.WebLinksAddon());
+    term.open(bodyEl);
 
-    setTimeout(function() {
-      fitAddon.fit();
+    const entry = { term, fitAddon, resizeObserver: null, subscription: null, paneEl, bodyEl, live: false };
+    terminals[clientName][type] = entry;
 
-      // Subscribe to Action Cable channel
-      const subscription = new CableSubscription(
-        { channel: 'TerminalChannel', client: clientName, type: type, cols: term.cols, rows: term.rows },
-        {
-          received: function(data) {
-            if (data.output) term.write(data.output);
-            if (data.error) {
-              term.write('\r\n\x1b[31m' + data.error + '\x1b[0m\r\n');
-            }
-          },
-          connected: function() {
-            term.focus();
-          },
-          disconnected: function() {
-            term.write('\r\n\x1b[90m[Disconnected]\x1b[0m\r\n');
-          }
+    const subscription = new CableSubscription(
+      { channel: 'TerminalChannel', client: clientName, type: type, cols: term.cols, rows: term.rows },
+      {
+        received: function(data) {
+          if (data.output) term.write(data.output);
+          if (data.error) term.write('\r\n\x1b[31m' + data.error + '\x1b[0m\r\n');
+          if (data.reattached) { entry.live = true; renderTabs(); }
+          if (data.exited)     { entry.live = false; renderTabs(); saveOpenSessions(); }
+        },
+        connected: function() {
+          entry.live = true;
+          renderTabs();
+          term.focus();
+          saveOpenSessions();
+        },
+        disconnected: function() {
+          entry.live = false;
+          renderTabs();
         }
-      );
+      }
+    );
+    entry.subscription = subscription;
+    term.onData(function(d) { subscription.send({ input: d }); });
 
-      // Send terminal input to server
-      term.onData(function(data) {
-        subscription.send({ input: data });
-      });
-
-      // Handle resize
-      const resizeObserver = new ResizeObserver(function() {
+    const resizeObserver = new ResizeObserver(function() {
+      if (paneEl.style.display !== 'none') {
         fitAddon.fit();
         subscription.send({ type: 'resize', cols: term.cols, rows: term.rows });
-      });
-      resizeObserver.observe(body);
+      }
+    });
+    resizeObserver.observe(bodyEl);
+    entry.resizeObserver = resizeObserver;
 
-      currentTerminal = { term: term, fitAddon: fitAddon, resizeObserver: resizeObserver };
-      currentSubscription = subscription;
-    }, 50);
+    document.getElementById('terminalPanel').classList.add('open');
+    renderTabs();
+    switchTo(clientName, type);
   }
 
-  function closeTerminal() {
-    if (currentSubscription) {
-      currentSubscription.unsubscribe();
-      currentSubscription = null;
+  function switchTo(clientName, type) {
+    Object.values(terminals).forEach(function(types) {
+      Object.values(types).forEach(function(e) { e.paneEl.style.display = 'none'; });
+    });
+    activeClient = clientName;
+    activeType   = type;
+    const entry = terminals[clientName][type];
+    entry.paneEl.style.display = 'flex';
+    renderTabs();
+    setTimeout(function() { entry.fitAddon.fit(); entry.term.focus(); }, 30);
+  }
+
+  function switchToClient(clientName) {
+    if (!terminals[clientName]) return;
+    const type = (activeClient === clientName && activeType && terminals[clientName][activeType])
+      ? activeType : Object.keys(terminals[clientName])[0];
+    switchTo(clientName, type);
+  }
+
+  function killSession(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry || !entry.subscription) return;
+    entry.subscription.send({ type: 'kill' });
+  }
+
+  function closeTypeTab(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry) return;
+    entry.subscription.unsubscribe();
+    entry.resizeObserver.disconnect();
+    entry.term.dispose();
+    entry.paneEl.remove();
+    delete terminals[clientName][type];
+    if (Object.keys(terminals[clientName]).length === 0) {
+      delete terminals[clientName];
+      if (activeClient === clientName) activeClient = null;
     }
-    if (currentTerminal) {
-      currentTerminal.resizeObserver.disconnect();
-      currentTerminal.term.dispose();
-      currentTerminal = null;
+    const remaining = Object.keys(terminals);
+    if (remaining.length === 0) {
+      activeClient = null; activeType = null;
+      document.getElementById('terminalPanel').classList.remove('open');
+      document.getElementById('clientTabs').innerHTML = '';
+      document.getElementById('typeTabBar').innerHTML = '';
+      return;
     }
+    const nextClient = (activeClient && terminals[activeClient]) ? activeClient : remaining[0];
+    const nextType   = Object.keys(terminals[nextClient])[0];
+    switchTo(nextClient, nextType);
+  }
+
+  function closeAllTerminals() {
+    Object.keys(terminals).forEach(function(c) {
+      Object.keys(terminals[c]).forEach(function(t) {
+        const e = terminals[c][t];
+        e.subscription && e.subscription.unsubscribe();
+        e.resizeObserver && e.resizeObserver.disconnect();
+        e.term.dispose();
+        e.paneEl.remove();
+      });
+    });
+    terminals = {}; activeClient = null; activeType = null;
     document.getElementById('terminalPanel').classList.remove('open');
-    document.getElementById('main').classList.remove('terminal-open');
-    document.getElementById('terminalBody').innerHTML = '';
+    document.getElementById('clientTabs').innerHTML = '';
+    document.getElementById('typeTabBar').innerHTML = '';
+    saveOpenSessions();
+  }
+
+  // ---- Session persistence ----
+  function saveOpenSessions() {
+    const sessions = [];
+    Object.keys(terminals).forEach(function(c) {
+      Object.keys(terminals[c]).forEach(function(t) {
+        sessions.push({ client: c, type: t });
+      });
+    });
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(sessions)); } catch(e) {}
+  }
+
+  function restoreOpenSessions() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SESSION_KEY) || '[]');
+      if (saved.length === 0) return;
+      // Slight delay to let the grid render first
+      setTimeout(function() {
+        saved.forEach(function(s) { openTerminal(s.client, s.type); });
+      }, 300);
+    } catch(e) {}
+  }
+
+  function renderTabs() {
+    const clientTabsEl = document.getElementById('clientTabs');
+    const typeTabBarEl = document.getElementById('typeTabBar');
+    clientTabsEl.innerHTML = Object.keys(terminals).map(function(c) {
+      return '<button class="client-tab' + (c === activeClient ? ' active' : '') +
+        '" onclick="switchToClient(\'' + c + '\')">' + c + '</button>';
+    }).join('');
+    if (activeClient && terminals[activeClient]) {
+      typeTabBarEl.innerHTML = Object.keys(terminals[activeClient]).map(function(t) {
+        const e = terminals[activeClient][t];
+        const dot = e.live
+          ? '<span class="session-dot live" title="Live session"></span>'
+          : '<span class="session-dot detached" title="Connecting..."></span>';
+        return '<div class="type-tab' + (t === activeType ? ' active' : '') + '">' +
+          '<button onclick="switchTo(\'' + activeClient + '\',\'' + t + '\')">' +
+            dot + '<span class="type-badge ' + t + '">' + t + '</span>' +
+          '</button>' +
+          '<button class="type-tab-kill" onclick="killSession(\'' + activeClient + '\',\'' + t + '\')" title="Kill session">&#9632;</button>' +
+          '<button class="type-tab-close" onclick="closeTypeTab(\'' + activeClient + '\',\'' + t + '\')" title="Close tab">&times;</button>' +
+        '</div>';
+      }).join('');
+    } else {
+      typeTabBarEl.innerHTML = '';
+    }
   }
 
   // ---- Refresh ----
@@ -312,9 +414,12 @@
   }
 
   // ---- Init ----
-  refreshClients().then(startAutoRefresh);
+  refreshClients().then(function() {
+    startAutoRefresh();
+    restoreOpenSessions();
+  });
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && currentTerminal) closeTerminal();
+    if (e.key === 'Escape' && Object.keys(terminals).length > 0) closeAllTerminals();
   });
 </script>

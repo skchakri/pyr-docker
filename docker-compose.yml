@@ -148,5 +148,31 @@ services:
       REDIS_URL: redis://127.0.0.1:6379/5
     command: *common-command
 
+  # ==================== PROFVAULT (1100) ====================
+  profvault:
+    build:
+      context: .
+      dockerfile: Dockerfile.profvault
+    container_name: pyr-profvault
+    network_mode: host
+    working_dir: /rails
+    volumes:
+      - /home/kalyan/platform/skchakri/prof_vault:/rails
+      - profvault_bundle_cache:/usr/local/bundle
+      - profvault_jobspy_venv:/rails/.jobspy-venv
+      - ~/.ssh:/root/.ssh:ro
+      - ./entrypoint-profvault.sh:/opt/pyr-docker/entrypoint-profvault.sh:ro
+    environment:
+      RAILS_ENV: development
+      PORT: "1100"
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: "5432"
+      DATABASE_USER: root
+      DATABASE_PASSWORD: password
+    command: /opt/pyr-docker/entrypoint-profvault.sh
+    restart: unless-stopped
+
 volumes:
   bundle_cache:
+  profvault_bundle_cache:
+  profvault_jobspy_venv:

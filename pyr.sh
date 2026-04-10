@@ -37,6 +37,7 @@ case "$ACTION" in
     fi
     echo ""
     echo "Port assignments:"
+    echo "  profvault:1100"
     echo "  avon:3001  naturessunshine:3002  stampinup:3003  monat:3004  partylite:3005  kwiverr:3006"
     echo "  naturessunshine:3004  monat:3005  avonpr:3006  bluesun:3007"
     echo "  greenzone:3008  idlife:3009  kwiverr:3010  listenuniversity:3011"

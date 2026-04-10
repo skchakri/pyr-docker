@@ -10,6 +10,7 @@ Rails.application.routes.draw do
         post :stop
         post :restart
         get :logs
+        get :dev_login
       end
     end
   end
