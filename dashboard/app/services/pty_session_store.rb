@@ -51,8 +51,17 @@ class PtySessionStore
     end
 
     def resize(key, cols, rows)
-      @mutex.synchronize { @sessions.dig(key, :writer) }&.winsize = [rows, cols]
-    rescue Errno::EIO, IOError, ArgumentError
+      session = @mutex.synchronize { @sessions[key] }
+      return unless session
+      return if cols.to_i <= 0 || rows.to_i <= 0
+
+      # Try the master read side first (most reliable for PTY.spawn), then writer.
+      [ session[:reader], session[:writer] ].compact.each do |io|
+        io.winsize = [ rows.to_i, cols.to_i ]
+        return
+      rescue Errno::EIO, IOError, ArgumentError, NoMethodError, NotImplementedError
+        next
+      end
       nil
     end
 

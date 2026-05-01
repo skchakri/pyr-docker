@@ -172,7 +172,41 @@ services:
     command: /opt/pyr-docker/entrypoint-profvault.sh
     restart: unless-stopped
 
+  # ==================== MYJIRA (1200) ====================
+  myjira:
+    build:
+      context: .
+      dockerfile: Dockerfile.myjira
+    container_name: pyr-myjira
+    network_mode: host
+    working_dir: /rails
+    volumes:
+      - /home/kalyan/platform/skchakri/myjira:/rails
+      - myjira_bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./entrypoint-myjira.sh:/opt/pyr-docker/entrypoint-myjira.sh:ro
+      # Host Claude Code CLI + auth, so PlaywrightRunnerJob can shell out
+      # to `claude -p ...` for AI test-case interpretation. The bind mount
+      # follows the symlink, so /usr/local/bin/claude becomes the real
+      # versioned binary regardless of host version bumps.
+      - /home/kalyan/.local/bin/claude:/usr/local/bin/claude:ro
+      - /home/kalyan/.claude:/root/.claude
+      # Persist Playwright's chromium download outside the container.
+      - myjira_playwright_cache:/root/.cache/ms-playwright
+    environment:
+      RAILS_ENV: development
+      PORT: "1200"
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: "5432"
+      DATABASE_USER: root
+      DATABASE_PASSWORD: password
+      REDIS_URL: redis://127.0.0.1:6379/12
+    command: /opt/pyr-docker/entrypoint-myjira.sh
+    restart: unless-stopped
+
 volumes:
   bundle_cache:
   profvault_bundle_cache:
   profvault_jobspy_venv:
+  myjira_bundle_cache:
+  myjira_playwright_cache:

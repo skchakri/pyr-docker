@@ -1,10 +1,50 @@
 <header class="header">
   <div class="header-left">
-    <div class="header-logo">P</div>
-    <h1>Pyr Dashboard <span>/ Docker Clients</span></h1>
+    <img src="/logo.svg" alt="PYR Docker" class="header-logo-img">
+    <h1>Dashboard <span>/ Docker Clients</span></h1>
+  </div>
+  <div class="claude-usage" id="claudeUsage" title="Click to refresh">
+    <div class="usage-meter" data-bucket="session">
+      <div class="usage-meter-head">
+        <span class="usage-label">Session</span>
+        <span class="usage-reset" data-role="reset">—</span>
+      </div>
+      <div class="usage-bar"><div class="usage-bar-fill" data-role="fill"></div></div>
+      <div class="usage-percent" data-role="percent">—</div>
+    </div>
+    <div class="usage-meter" data-bucket="weekly_all">
+      <div class="usage-meter-head">
+        <span class="usage-label">Weekly · all models</span>
+        <span class="usage-reset" data-role="reset">—</span>
+      </div>
+      <div class="usage-bar"><div class="usage-bar-fill" data-role="fill"></div></div>
+      <div class="usage-percent" data-role="percent">—</div>
+    </div>
+    <div class="usage-meter" data-bucket="weekly_sonnet">
+      <div class="usage-meter-head">
+        <span class="usage-label">Weekly · Sonnet</span>
+        <span class="usage-reset" data-role="reset">—</span>
+      </div>
+      <div class="usage-bar"><div class="usage-bar-fill" data-role="fill"></div></div>
+      <div class="usage-percent" data-role="percent">—</div>
+    </div>
   </div>
   <div class="header-actions">
     <div class="status-summary" id="statusSummary"></div>
+    <div class="mgr-badges" id="mgrBadges">
+      <div class="mgr-badge" onclick="openMgr('skills')" title="Skills">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <b id="mgrSkillCount">—</b> skills
+      </div>
+      <div class="mgr-badge" onclick="openMgr('plugins')" title="Plugins &amp; Agents">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <b id="mgrPluginCount">—</b> plugins
+      </div>
+      <div class="mgr-badge" onclick="openMgr('mcp')" title="MCP Servers">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        <b id="mgrMcpCount">—</b> mcp
+      </div>
+    </div>
     <button class="btn btn-sm" onclick="refreshClients()" id="refreshBtn">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="23 4 23 10 17 10"></polyline>
@@ -15,6 +55,126 @@
     </button>
   </div>
 </header>
+
+<!-- ================================================================
+     Claude Code Manager Modal
+     ================================================================ -->
+<div class="mgr-overlay hidden" id="mgrOverlay" onclick="if(event.target===this)closeMgr()">
+  <div class="mgr-modal">
+    <div class="mgr-hdr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      <span class="mgr-hdr-title">Claude Code Manager</span>
+      <button class="btn btn-sm btn-accent" onclick="openMgrTrending()" style="margin-right:6px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+        </svg>
+        Trending
+      </button>
+      <button class="btn btn-sm" onclick="openMgrSuggest()" style="margin-right:6px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        AI Suggestions
+      </button>
+      <button class="mgr-hdr-close" onclick="closeMgr()">&times;</button>
+    </div>
+    <div class="mgr-tabs" id="mgrTabs">
+      <div class="mgr-tab active" data-tab="skills"   onclick="switchMgrTab('skills',this)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Skills
+      </div>
+      <div class="mgr-tab" data-tab="plugins" onclick="switchMgrTab('plugins',this)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Plugins &amp; Agents
+      </div>
+      <div class="mgr-tab" data-tab="mcp" onclick="switchMgrTab('mcp',this)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+        MCP Servers
+      </div>
+    </div>
+
+    <!-- Skills panel -->
+    <div class="mgr-body" id="mgrPanelSkills">
+      <div class="mgr-section" id="mgrSkillsList"></div>
+      <div class="mgr-form">
+        <div class="mgr-form-label">Install skill from GitHub</div>
+        <div class="mgr-row">
+          <input class="mgr-inp" id="mgrSkillRepo" placeholder="owner/repo or full GitHub URL"
+            onkeydown="if(event.key==='Enter')mgrInstallSkill()"/>
+          <button class="mgr-add" onclick="mgrInstallSkill()">Install</button>
+        </div>
+        <div class="mgr-hint">Clones into ~/.claude/skills/</div>
+      </div>
+    </div>
+
+    <!-- Plugins panel -->
+    <div class="mgr-body hidden" id="mgrPanelPlugins">
+      <div class="mgr-section" id="mgrPluginsList"></div>
+      <div class="mgr-form">
+        <div class="mgr-form-label">Add plugin</div>
+        <div class="mgr-row">
+          <input class="mgr-inp" id="mgrPluginId" placeholder="name@marketplace  e.g. claude-mem@thedotmack"
+            onkeydown="if(event.key==='Enter')mgrAddPlugin()"/>
+          <button class="mgr-add" onclick="mgrAddPlugin()">Enable</button>
+        </div>
+        <div class="mgr-hint">Added to enabledPlugins in ~/.claude/settings.json</div>
+      </div>
+    </div>
+
+    <!-- MCP panel -->
+    <div class="mgr-body hidden" id="mgrPanelMcp">
+      <div class="mgr-section" id="mgrMcpList"></div>
+      <div class="mgr-form">
+        <div class="mgr-form-label">Add MCP server</div>
+        <div class="mgr-row">
+          <input class="mgr-inp" id="mgrMcpName" placeholder="name" style="max-width:90px"/>
+          <select class="mgr-sel" id="mgrMcpType" onchange="mgrToggleMcpType()">
+            <option value="stdio">stdio</option>
+            <option value="sse">sse</option>
+            <option value="http">http</option>
+          </select>
+        </div>
+        <div id="mgrMcpStdio">
+          <div class="mgr-row">
+            <input class="mgr-inp" id="mgrMcpCmd" placeholder="command  e.g. npx, python3"/>
+          </div>
+          <div class="mgr-row">
+            <input class="mgr-inp" id="mgrMcpArgs" placeholder="args, comma-separated"
+              onkeydown="if(event.key==='Enter')mgrAddMcp()"/>
+            <button class="mgr-add" onclick="mgrAddMcp()">Add</button>
+          </div>
+        </div>
+        <div id="mgrMcpUrlWrap" style="display:none">
+          <div class="mgr-row">
+            <input class="mgr-inp" id="mgrMcpUrl" placeholder="http://localhost:PORT/sse"
+              onkeydown="if(event.key==='Enter')mgrAddMcp()"/>
+            <button class="mgr-add" onclick="mgrAddMcp()">Add</button>
+          </div>
+        </div>
+        <div class="mgr-hint">Saved to mcpServers in ~/.claude/settings.json</div>
+      </div>
+    </div>
+
+    <!-- Trending panel (shown instead of tabs) -->
+    <div class="mgr-body hidden" id="mgrPanelTrending">
+      <div class="mgr-tabs" style="border-top:0">
+        <div class="mgr-tab active" onclick="switchTrendingTab('skills',this)">Skills</div>
+        <div class="mgr-tab" onclick="switchTrendingTab('plugins',this)">Plugins</div>
+        <div class="mgr-tab" onclick="switchTrendingTab('mcp',this)">MCP Servers</div>
+      </div>
+      <div class="mgr-section" id="mgrTrendingList"></div>
+    </div>
+
+    <!-- Suggestions panel -->
+    <div class="mgr-body hidden" id="mgrPanelSuggest">
+      <div class="mgr-section" id="mgrSuggestList">
+        <div class="mgr-empty">Analyzing your prompt history…</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <main class="main" id="main">
   <div class="loading" id="loading">
@@ -44,6 +204,121 @@
   let terminals = {};
   let refreshTimer = null;
   const SESSION_KEY = 'pyr_open_terminals'; // localStorage key
+  const FREQ_KEY    = 'pyr_action_freq';    // {client: {action: count}}
+  const ORDER_KEY   = 'pyr_card_order';     // [clientName, ...] manual drag order
+  const BUTTONS_KEY = 'pyr_card_buttons';   // {client: {action: false}} hidden buttons
+  const QUEUE_KEY   = 'pyr_input_queues';   // {client: {type: textareaContent}}
+  const CLAUDE_SETTINGS_KEY = 'pyr_claude_settings'; // {client: {model, effort}}
+  const openSettings = new Set();           // client names whose settings panel is open
+
+  // ---- Per-Claude-session model/effort preference ----
+  // Each client's Claude tab has its own {model, effort}. "default" means
+  // "don't pass the flag" / "don't touch what's already set" when pushing
+  // slash commands to an already-running session.
+  function getClaudeSettings(client) {
+    try {
+      const all = JSON.parse(localStorage.getItem(CLAUDE_SETTINGS_KEY) || '{}');
+      const s = all[client] || {};
+      return { model: s.model || 'default', effort: s.effort || 'default' };
+    } catch(e) { return { model: 'default', effort: 'default' }; }
+  }
+  function setClaudeSetting(client, flag, value) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(CLAUDE_SETTINGS_KEY) || '{}'); } catch(e) {}
+    if (!all[client]) all[client] = {};
+    all[client][flag] = value;
+    try { localStorage.setItem(CLAUDE_SETTINGS_KEY, JSON.stringify(all)); } catch(e) {}
+  }
+
+  // ---- Prompt history (Redis-backed) ----
+  function savePromptHistory(client, text, source) {
+    if (!text || !text.trim()) return;
+    const fd = new FormData();
+    fd.append('client', client);
+    fd.append('text', text);
+    fd.append('source', source || 'keyboard');
+    fetch('/api/claude/history', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN }, body: fd }).catch(function() {});
+  }
+  function formatHistoryWhen(ts) {
+    if (!ts) return '';
+    const diff = Math.floor(Date.now() / 1000) - Number(ts);
+    if (diff < 60)     return diff + 's ago';
+    if (diff < 3600)   return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400)  return Math.floor(diff / 3600) + 'h ago';
+    return new Date(Number(ts) * 1000).toLocaleString();
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ---- Per-terminal input queue persistence ----
+  function loadQueueContents(clientName, type) {
+    try {
+      const all = JSON.parse(localStorage.getItem(QUEUE_KEY) || '{}');
+      return (all[clientName] && all[clientName][type]) || '';
+    } catch(e) { return ''; }
+  }
+  function saveQueueContents(clientName, type, text) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(QUEUE_KEY) || '{}'); } catch(e) {}
+    if (!all[clientName]) all[clientName] = {};
+    all[clientName][type] = text;
+    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(all)); } catch(e) {}
+  }
+
+  function getCardOrder() {
+    try { return JSON.parse(localStorage.getItem(ORDER_KEY) || '[]'); }
+    catch(e) { return []; }
+  }
+  function saveCardOrder(arr) {
+    try { localStorage.setItem(ORDER_KEY, JSON.stringify(arr)); } catch(e) {}
+  }
+
+  function getActionFreq() {
+    try { return JSON.parse(localStorage.getItem(FREQ_KEY) || '{}'); }
+    catch(e) { return {}; }
+  }
+  function bumpAction(client, key) {
+    const freq = getActionFreq();
+    if (!freq[client]) freq[client] = {};
+    freq[client][key] = (freq[client][key] || 0) + 1;
+    try { localStorage.setItem(FREQ_KEY, JSON.stringify(freq)); } catch(e) {}
+    if (clients.length) renderClients(clients);
+  }
+
+  // ---- Per-card visible-button settings ----
+  function getCardButtons(name) {
+    try {
+      const all = JSON.parse(localStorage.getItem(BUTTONS_KEY) || '{}');
+      return all[name] || {};
+    } catch(e) { return {}; }
+  }
+
+  // Hidden unless the user explicitly enables them per-card via the gear menu.
+  const HIDDEN_BY_DEFAULT = { terminal: true, worker: true, scheduler: true };
+
+  function isButtonEnabled(name, key) {
+    const settings = getCardButtons(name);
+    if (key in settings) return settings[key] !== false;
+    return !HIDDEN_BY_DEFAULT[key];
+  }
+
+  function toggleCardButton(name, key) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(BUTTONS_KEY) || '{}'); } catch(e) {}
+    if (!all[name]) all[name] = {};
+    all[name][key] = all[name][key] === false ? true : false;
+    try { localStorage.setItem(BUTTONS_KEY, JSON.stringify(all)); } catch(e) {}
+    renderClients(clients);
+  }
+
+  function toggleCardSettings(name) {
+    if (openSettings.has(name)) openSettings.delete(name);
+    else openSettings.add(name);
+    renderClients(clients);
+  }
 
   // ---- Minimal ActionCable client ----
   class CableSubscription {
@@ -149,11 +424,79 @@
     return '<span class="badge badge-notfound">Not Found</span>';
   }
 
+  // Action button definitions — order here is the default for unused actions.
+  // Sorted at render time by per-client click frequency (most-used first).
+  function buildActions(c, isRunning) {
+    const disabledAttr = isRunning ? '' : 'disabled';
+    const accessStyle  = isRunning ? '' : 'style="opacity:0.4;pointer-events:none"';
+    const term = function(type) { return 'onclick="bumpAction(\'' + c.name + '\',\'' + type + '\');openTerminal(\'' + c.name + '\',\'' + type + '\')"'; };
+
+    const actions = [
+      { key: 'access', html:
+        '<a class="btn btn-sm btn-accent" href="' + (c.access_url || ('/api/clients/' + c.name + '/dev_login')) + '" target="_blank" onclick="bumpAction(\'' + c.name + '\',\'access\')" ' + accessStyle + '>' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> Access</a>'
+      },
+      { key: 'console', html:
+        '<button class="btn btn-sm" ' + term('console') + ' ' + disabledAttr + ' title="Rails Console">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Console</button>'
+      },
+      { key: 'logs', html:
+        '<button class="btn btn-sm" ' + term('logs') + ' ' + disabledAttr + ' title="View Logs">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Logs</button>'
+      },
+      { key: 'terminal', html:
+        '<button class="btn btn-sm btn-green" ' + term('terminal') + ' title="Host terminal">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8l4 4-4 4"></path><line x1="12" y1="16" x2="18" y2="16"></line></svg> Terminal</button>'
+      },
+      { key: 'worker', html:
+        '<button class="btn btn-sm btn-purple" ' + term('worker') + ' ' + disabledAttr + ' title="Resque Worker">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M4.93 4.93a10 10 0 0 0 0 14.14"></path></svg> Worker</button>'
+      },
+      { key: 'scheduler', html:
+        '<button class="btn btn-sm btn-orange" ' + term('scheduler') + ' ' + disabledAttr + ' title="Resque Scheduler">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Scheduler</button>'
+      },
+      { key: 'claude', html:
+        '<button class="btn btn-sm btn-claude" ' + term('claude') + ' title="Claude Code in host directory">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2l2.39 6.95H21l-5.3 4.04L17.78 20 12 15.77 6.22 20l1.84-7.01L3 8.95h6.61L12 2z"></path></svg> Claude</button>'
+      },
+      { key: 'tests', html:
+        '<a class="btn btn-sm btn-tests" href="http://localhost:1200/projects/' + myjiraSlug(c.name) + '/test_plans" target="_blank" onclick="bumpAction(\'' + c.name + '\',\'tests\')" title="Test plans in myjira">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2h6v6l5 10a2 2 0 0 1-1.8 2.9H5.8A2 2 0 0 1 4 18l5-10V2z"></path><line x1="9" y1="2" x2="15" y2="2"></line></svg> Tests</a>'
+      }
+    ];
+
+    if (c.vite_service) {
+      actions.push({ key: 'vite', html:
+        '<button class="btn btn-sm btn-yellow" data-action="restart_vite-' + c.name + '" ' + disabledAttr + ' onclick="bumpAction(\'' + c.name + '\',\'vite\');clientAction(\'' + c.name + '\',\'restart_vite\')" title="Restart Vite (' + c.vite_service + ')">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Vite</button>'
+      });
+    }
+
+    return actions;
+  }
+
+  // Map a dashboard client name to its myjira project slug.
+  // PYR platform clients get a "pyr-" prefix; standalone apps use their bare name.
+  function myjiraSlug(name) {
+    const pyrClients = ['avon', 'naturessunshine', 'stampinup', 'monat', 'partylite', 'kwiverr'];
+    if (pyrClients.indexOf(name) !== -1) return 'pyr-' + name;
+    return name;
+  }
+
+  function clientFreqTotal(name, allFreq) {
+    const f = allFreq[name];
+    if (!f) return 0;
+    let total = 0;
+    for (const k in f) total += f[k];
+    return total;
+  }
+
   function renderClients(data) {
     clients = data;
     const grid = document.getElementById('grid');
     document.getElementById('loading').style.display = 'none';
-    grid.style.display = 'grid';
+    grid.style.display = 'flex';
 
     const running = data.filter(function(c) { return c.state === 'running'; }).length;
     const stopped = data.length - running;
@@ -161,15 +504,65 @@
       '<span class="stat"><span class="dot green"></span>' + running + ' running</span>' +
       '<span class="stat"><span class="dot red"></span>' + stopped + ' stopped</span>';
 
-    grid.innerHTML = data.map(function(c) {
-      const isRunning = c.state === 'running';
-      const disabledAttr = isRunning ? '' : 'disabled';
-      const accessStyle = isRunning ? '' : 'style="opacity:0.4;pointer-events:none"';
+    const allFreq  = getActionFreq();
+    const order    = getCardOrder();
+    const orderMap = {};
+    order.forEach(function(n, i) { orderMap[n] = i; });
 
-      return '<div class="card">' +
-        '<div class="card-header"><div class="card-title">' +
-          '<h3>' + c.name + '</h3>' + getStateBadge(c.state) +
-        '</div></div>' +
+    const sortedData = data.slice().sort(function(a, b) {
+      const aHas = a.name in orderMap;
+      const bHas = b.name in orderMap;
+      if (aHas && bHas) return orderMap[a.name] - orderMap[b.name];
+      if (aHas) return -1;
+      if (bHas) return 1;
+      return clientFreqTotal(b.name, allFreq) - clientFreqTotal(a.name, allFreq);
+    });
+
+    grid.innerHTML = sortedData.map(function(c) {
+      const isRunning = c.state === 'running';
+      const lifecycle = isRunning
+        ? '<button class="btn btn-sm btn-red" data-action="stop-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'stop\')">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"></rect></svg> Stop</button>' +
+          '<button class="btn btn-sm btn-yellow" data-action="restart-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'restart\')">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg> Restart</button>'
+        : '<button class="btn btn-sm btn-green" data-action="start-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'start\')">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Start</button>' +
+          '<button class="btn btn-sm btn-yellow" data-action="restart-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'restart\')">' +
+            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg> Restart</button>';
+
+      const allActions  = buildActions(c, isRunning);
+      const actionsHtml = allActions
+        .filter(function(a) { return isButtonEnabled(c.name, a.key); })
+        .map(function(a) { return a.html; }).join('');
+
+      const settingsHtml =
+        '<div class="card-settings">' +
+          '<div class="settings-title">Visible buttons</div>' +
+          '<div class="settings-list">' +
+            allActions.map(function(a) {
+              const checked = isButtonEnabled(c.name, a.key) ? 'checked' : '';
+              return '<label class="settings-row">' +
+                '<input type="checkbox" ' + checked +
+                  ' onchange="toggleCardButton(\'' + c.name + '\',\'' + a.key + '\')">' +
+                '<span>' + a.key + '</span></label>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+
+      const gearHtml =
+        '<button class="card-gear" onclick="toggleCardSettings(\'' + c.name + '\')" title="Card settings">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>' +
+        '</button>';
+
+      const cardCls = 'card' + (openSettings.has(c.name) ? ' settings-open' : '');
+
+      return '<div class="' + cardCls + '" draggable="true" data-client="' + c.name + '">' +
+        '<div class="card-header">' +
+          '<div class="card-title">' +
+            '<h3>' + c.name + '</h3>' + getStateBadge(c.state) +
+          '</div>' +
+          gearHtml +
+        '</div>' +
         (c.branch ? '<div class="card-branch"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>' + c.branch + '</div>' : '') +
         '<div class="card-meta">' +
           '<div class="meta-item"><span class="meta-label">Port</span><span class="meta-value">' + c.port + '</span></div>' +
@@ -177,27 +570,11 @@
           '<div class="meta-item"><span class="meta-label">Uptime</span><span class="meta-value">' + c.status + '</span></div>' +
         '</div>' +
         '<div class="card-actions">' +
-          (isRunning
-            ? '<button class="btn btn-sm btn-red" data-action="stop-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'stop\')">' +
-                '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"></rect></svg> Stop</button>' +
-              '<button class="btn btn-sm btn-yellow" data-action="restart-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'restart\')">' +
-                '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg> Restart</button>'
-            : '<button class="btn btn-sm btn-green" data-action="start-' + c.name + '" onclick="clientAction(\'' + c.name + '\',\'start\')">' +
-                '<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Start</button>'
-          ) +
-          '<a class="btn btn-sm btn-accent" href="/api/clients/' + c.name + '/dev_login" target="_blank" ' + accessStyle + '>' +
-            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> Access</a>' +
-          '<button class="btn btn-sm" onclick="openTerminal(\'' + c.name + '\',\'console\')" ' + disabledAttr + ' title="Rails Console">' +
-            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Console</button>' +
-          '<button class="btn btn-sm" onclick="openTerminal(\'' + c.name + '\',\'logs\')" ' + disabledAttr + ' title="View Logs">' +
-            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Logs</button>' +
-          '<button class="btn btn-sm btn-green" onclick="openTerminal(\'' + c.name + '\',\'terminal\')" title="Host terminal (claude, git, etc.)">' +
-            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8l4 4-4 4"></path><line x1="12" y1="16" x2="18" y2="16"></line></svg> Terminal</button>' +
-          '<button class="btn btn-sm btn-purple" onclick="openTerminal(\'' + c.name + '\',\'worker\')" ' + disabledAttr + ' title="Resque Worker">' +
-            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M4.93 4.93a10 10 0 0 0 0 14.14"></path></svg> Worker</button>' +
-          '<button class="btn btn-sm btn-orange" onclick="openTerminal(\'' + c.name + '\',\'scheduler\')" ' + disabledAttr + ' title="Resque Scheduler">' +
-            '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Scheduler</button>' +
-        '</div></div>';
+          lifecycle +
+          actionsHtml +
+        '</div>' +
+        settingsHtml +
+        '</div>';
     }).join('');
   }
 
@@ -226,11 +603,119 @@
     const panes = document.getElementById('terminalPanes');
     const paneEl = document.createElement('div');
     paneEl.className = 'terminal-pane';
-    paneEl.style.display = 'none';
+
+    // The pane is a flex-row (body + queue panel sit side-by-side). For the
+    // Claude toolbar we need a column, so wrap the toolbar + body in an inner
+    // column container and leave the queue panel as a row-sibling below.
+    const paneMainEl = document.createElement('div');
+    paneMainEl.className = 'terminal-pane-main';
+
+    // Claude-only: per-session toolbar with Model + Effort dropdowns + voice
+    // + history. Values are scoped to {clientName}, persisted in localStorage,
+    // and pushed to this specific subscription via /model or /effort slash
+    // commands. Voice input uses the browser SpeechRecognition API. History
+    // is Redis-backed via /api/claude/history.
+    let claudeToolbarEl    = null;
+    let claudeVoiceBarEl   = null;
+    let claudeHistoryPanel = null;
+    if (type === 'claude') {
+      const cfg = getClaudeSettings(clientName);
+      claudeToolbarEl = document.createElement('div');
+      claudeToolbarEl.className = 'claude-toolbar';
+      claudeToolbarEl.innerHTML =
+        '<label class="claude-ctrl-field"><span>Model</span>' +
+          '<select data-role="claude-model">' +
+            '<option value="default">default</option>' +
+            '<option value="sonnet">sonnet</option>' +
+            '<option value="opus">opus</option>' +
+            '<option value="haiku">haiku</option>' +
+          '</select>' +
+        '</label>' +
+        '<label class="claude-ctrl-field"><span>Effort</span>' +
+          '<select data-role="claude-effort">' +
+            '<option value="default">default</option>' +
+            '<option value="low">low</option>' +
+            '<option value="medium">medium</option>' +
+            '<option value="high">high</option>' +
+            '<option value="max">max</option>' +
+          '</select>' +
+        '</label>' +
+        '<button class="claude-tool-btn" data-role="claude-mic" title="Voice input (Chrome)">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>' +
+          '<span>Voice</span>' +
+        '</button>' +
+        '<button class="claude-tool-btn" data-role="claude-history" title="Prompt history">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"></path><circle cx="12" cy="12" r="9"></circle></svg>' +
+          '<span>History</span>' +
+        '</button>' +
+        '<span class="claude-toolbar-hint">' + clientName + '</span>';
+      claudeToolbarEl.querySelector('[data-role=claude-model]').value  = cfg.model;
+      claudeToolbarEl.querySelector('[data-role=claude-effort]').value = cfg.effort;
+      paneMainEl.appendChild(claudeToolbarEl);
+
+      // Voice input bar (hidden by default — revealed when mic is toggled on)
+      claudeVoiceBarEl = document.createElement('div');
+      claudeVoiceBarEl.className = 'claude-voice-bar';
+      claudeVoiceBarEl.innerHTML =
+        '<div class="claude-voice-indicator"><span class="mic-dot"></span><span class="mic-label">Listening…</span></div>' +
+        '<textarea class="claude-voice-text" placeholder="Speak… (Esc to cancel · Enter to send)" spellcheck="false"></textarea>' +
+        '<button class="btn btn-sm btn-accent" data-role="voice-send">Send &#9166;</button>' +
+        '<button class="btn btn-sm" data-role="voice-cancel">Cancel</button>';
+      paneMainEl.appendChild(claudeVoiceBarEl);
+
+      // History panel (hidden by default — revealed when History btn clicked)
+      claudeHistoryPanel = document.createElement('div');
+      claudeHistoryPanel.className = 'claude-history-panel';
+      claudeHistoryPanel.innerHTML =
+        '<div class="claude-history-head">' +
+          '<span>Prompt history · ' + clientName + '</span>' +
+          '<div style="flex:1"></div>' +
+          '<button class="btn btn-sm btn-red" data-role="history-clear">Clear</button>' +
+          '<button class="btn btn-sm" data-role="history-close">&times;</button>' +
+        '</div>' +
+        '<div class="claude-history-list" data-role="history-list">' +
+          '<div class="claude-history-empty">Loading…</div>' +
+        '</div>';
+      paneMainEl.appendChild(claudeHistoryPanel);
+    }
+
     const bodyEl = document.createElement('div');
     bodyEl.className = 'terminal-body';
-    paneEl.appendChild(bodyEl);
+    paneMainEl.appendChild(bodyEl);
+    paneEl.appendChild(paneMainEl);
+
+    // Per-pane input queue panel (hidden until user opens it via the ≡ button)
+    const queueEl = document.createElement('div');
+    queueEl.className = 'queue-panel';
+    queueEl.innerHTML =
+      '<div class="queue-header">' +
+        '<span>Input Queue</span>' +
+        '<button class="queue-close-btn" title="Close panel">&times;</button>' +
+      '</div>' +
+      '<div class="queue-help">One command per line. Enter is appended automatically. Edit any line freely; the cursor advances as lines are sent.</div>' +
+      '<textarea class="queue-textarea" spellcheck="false" placeholder="first command\nsecond command\nthird command"></textarea>' +
+      '<div class="queue-actions">' +
+        '<button class="queue-run-btn" title="Run all (auto-advance when output is idle)">&#9654; Run All</button>' +
+        '<button class="queue-next-btn" title="Send the next line manually">&#9197; Next</button>' +
+        '<button class="queue-pause-btn" title="Pause auto-run">&#9208; Pause</button>' +
+        '<button class="queue-reset-btn" title="Reset cursor to top">&#9198; Reset</button>' +
+      '</div>' +
+      '<div class="queue-status">Ready · 0 sent</div>';
+    paneEl.appendChild(queueEl);
+
     panes.appendChild(paneEl);
+
+    // CRITICAL: open the terminal panel and make THIS pane visible BEFORE
+    // creating the xterm + subscription, so fitAddon.fit() can compute real
+    // cols/rows from a non-zero-sized container. Otherwise the backend
+    // spawns the PTY at the default 80x24 and TUIs like `claude` render narrow.
+    document.getElementById('terminalPanel').classList.add('open');
+    Object.values(terminals).forEach(function(types) {
+      Object.values(types).forEach(function(e) { e.paneEl.style.display = 'none'; });
+    });
+    paneEl.style.display = 'flex';
+    activeClient = clientName;
+    activeType   = type;
 
     const term = new Terminal({
       theme: TERM_THEME,
@@ -242,14 +727,52 @@
     term.loadAddon(new WebLinksAddon.WebLinksAddon());
     term.open(bodyEl);
 
-    const entry = { term, fitAddon, resizeObserver: null, subscription: null, paneEl, bodyEl, live: false };
+    // Force a synchronous layout pass and fit BEFORE subscribing.
+    // bodyEl.offsetHeight forces layout; fit() then reads real dimensions.
+    void bodyEl.offsetHeight;
+    try { fitAddon.fit(); } catch(e) {}
+
+    const entry = {
+      term, fitAddon, resizeObserver: null, subscription: null, paneEl, bodyEl, queueEl,
+      live: false,
+      // Input-queue state
+      queueCursor: 0,
+      queueAuto: false,
+      queueAutoTimer: null,
+      queueLastOutputAt: Date.now()
+    };
     terminals[clientName][type] = entry;
 
+    // Restore previously saved queue contents for this client+type
+    const queueTextarea = queueEl.querySelector('.queue-textarea');
+    queueTextarea.value = loadQueueContents(clientName, type);
+    updateQueueStatus(entry);
+
+    // Wire up queue panel buttons + textarea persistence
+    queueEl.querySelector('.queue-close-btn').addEventListener('click', function() { toggleQueue(clientName, type); });
+    queueEl.querySelector('.queue-run-btn').addEventListener('click',   function() { runQueueAll(clientName, type); });
+    queueEl.querySelector('.queue-next-btn').addEventListener('click',  function() { sendQueueNext(clientName, type); });
+    queueEl.querySelector('.queue-pause-btn').addEventListener('click', function() { pauseQueue(clientName, type); });
+    queueEl.querySelector('.queue-reset-btn').addEventListener('click', function() { resetQueue(clientName, type); });
+    queueTextarea.addEventListener('input', function() {
+      saveQueueContents(clientName, type, queueTextarea.value);
+      updateQueueStatus(entry);
+    });
+
+    const subParams = { channel: 'TerminalChannel', client: clientName, type: type, cols: term.cols, rows: term.rows };
+    if (type === 'claude') {
+      const claudeCfg = getClaudeSettings(clientName);
+      subParams.model  = claudeCfg.model;
+      subParams.effort = claudeCfg.effort;
+    }
     const subscription = new CableSubscription(
-      { channel: 'TerminalChannel', client: clientName, type: type, cols: term.cols, rows: term.rows },
+      subParams,
       {
         received: function(data) {
-          if (data.output) term.write(data.output);
+          if (data.output) {
+            term.write(data.output);
+            entry.queueLastOutputAt = Date.now();
+          }
           if (data.error) term.write('\r\n\x1b[31m' + data.error + '\x1b[0m\r\n');
           if (data.reattached) { entry.live = true; renderTabs(); }
           if (data.exited)     { entry.live = false; renderTabs(); saveOpenSessions(); }
@@ -259,6 +782,9 @@
           renderTabs();
           term.focus();
           saveOpenSessions();
+          // Re-fit + re-send on connect in case anything changed during the round trip
+          try { fitAddon.fit(); } catch(e) {}
+          subscription.send({ type: 'resize', cols: term.cols, rows: term.rows });
         },
         disconnected: function() {
           entry.live = false;
@@ -267,20 +793,272 @@
       }
     );
     entry.subscription = subscription;
-    term.onData(function(d) { subscription.send({ input: d }); });
+
+    // ---- Keystroke capture (Claude only) ----
+    // Accumulate printable characters in `promptBuf`. On Enter, save the
+    // buffer to Redis-backed history via /api/claude/history. Backspace
+    // pops, Ctrl+C clears, ESC + anything after is dropped (arrow keys and
+    // other TUI control sequences).
+    entry.promptBuf = '';
+    function captureKeystrokes(d) {
+      if (type !== 'claude') return;
+      let i = 0;
+      while (i < d.length) {
+        const code = d.charCodeAt(i);
+        if (code === 13 || code === 10) { // Enter
+          if (entry.promptBuf.trim().length >= 2) {
+            savePromptHistory(clientName, entry.promptBuf, 'keyboard');
+          }
+          entry.promptBuf = '';
+          i++;
+        } else if (code === 127 || code === 8) { // Backspace/DEL
+          entry.promptBuf = entry.promptBuf.slice(0, -1);
+          i++;
+        } else if (code === 3) {                  // Ctrl+C
+          entry.promptBuf = '';
+          i++;
+        } else if (code === 27) {                 // ESC — drop remainder of chunk
+          break;
+        } else if (code >= 32) {                  // printable
+          entry.promptBuf += d[i];
+          i++;
+        } else {
+          i++;
+        }
+      }
+      // Safety cap so we don't balloon memory if capture goes sideways
+      if (entry.promptBuf.length > 16384) entry.promptBuf = entry.promptBuf.slice(-16384);
+    }
+    term.onData(function(d) {
+      subscription.send({ input: d });
+      captureKeystrokes(d);
+    });
+
+    // Wire Claude toolbar change handlers now that `subscription` exists.
+    if (claudeToolbarEl) {
+      const modelSel  = claudeToolbarEl.querySelector('[data-role=claude-model]');
+      const effortSel = claudeToolbarEl.querySelector('[data-role=claude-effort]');
+      function pushSlash(flag, value) {
+        if (!value || value === 'default') return;
+        if (!entry.live) return; // session not yet connected — spawn flags will cover it
+        subscription.send({ input: '/' + flag + ' ' + value + '\r' });
+      }
+      modelSel.addEventListener('change', function() {
+        setClaudeSetting(clientName, 'model', modelSel.value);
+        pushSlash('model', modelSel.value);
+        toast(clientName + ' · model → ' + modelSel.value, 'success');
+      });
+      effortSel.addEventListener('change', function() {
+        setClaudeSetting(clientName, 'effort', effortSel.value);
+        pushSlash('effort', effortSel.value);
+        toast(clientName + ' · effort → ' + effortSel.value, 'success');
+      });
+
+      // ---- Voice input (SpeechRecognition) ----
+      const micBtn    = claudeToolbarEl.querySelector('[data-role=claude-mic]');
+      const voiceBar  = claudeVoiceBarEl;
+      const voiceText = voiceBar.querySelector('.claude-voice-text');
+      const voiceSend = voiceBar.querySelector('[data-role=voice-send]');
+      const voiceCxl  = voiceBar.querySelector('[data-role=voice-cancel]');
+
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        micBtn.disabled = true;
+        micBtn.title = 'SpeechRecognition API not supported in this browser';
+      }
+      let recognition = null;
+      let voiceFinal  = '';
+
+      function stopRecognition() {
+        if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+        claudeToolbarEl.classList.remove('listening');
+      }
+      function closeVoice() {
+        stopRecognition();
+        voiceBar.classList.remove('open');
+        voiceText.value = '';
+        voiceFinal = '';
+      }
+      function startRecognition() {
+        if (!SR) { toast('Voice input not supported in this browser', 'error'); return; }
+        if (recognition) { stopRecognition(); return; }
+        voiceBar.classList.add('open');
+        voiceFinal = voiceText.value || '';
+        recognition = new SR();
+        recognition.lang = 'en-US';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.onresult = function(e) {
+          let interim = '';
+          for (let r = e.resultIndex; r < e.results.length; r++) {
+            const res = e.results[r];
+            if (res.isFinal) voiceFinal += (voiceFinal ? ' ' : '') + res[0].transcript.trim();
+            else             interim += res[0].transcript;
+          }
+          voiceText.value = (voiceFinal + (interim ? ' ' + interim : '')).trim();
+        };
+        recognition.onerror = function(e) {
+          toast('Voice error: ' + e.error, 'error');
+          stopRecognition();
+        };
+        recognition.onend = function() {
+          claudeToolbarEl.classList.remove('listening');
+          recognition = null;
+        };
+        try {
+          recognition.start();
+          claudeToolbarEl.classList.add('listening');
+          setTimeout(function() { voiceText.focus(); }, 80);
+        } catch (e) {
+          toast('Voice start failed: ' + e.message, 'error');
+          stopRecognition();
+        }
+      }
+      function sendVoice() {
+        const text = (voiceText.value || '').trim();
+        if (!text) { closeVoice(); return; }
+        subscription.send({ input: text + '\r' });
+        savePromptHistory(clientName, text, 'voice');
+        closeVoice();
+        toast('Sent: ' + text.slice(0, 60) + (text.length > 60 ? '…' : ''), 'success');
+      }
+
+      micBtn.addEventListener('click', startRecognition);
+      voiceSend.addEventListener('click', sendVoice);
+      voiceCxl.addEventListener('click', closeVoice);
+      voiceText.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendVoice(); }
+        else if (e.key === 'Escape')          { e.preventDefault(); closeVoice(); }
+      });
+
+      // ---- History panel ----
+      const historyBtn   = claudeToolbarEl.querySelector('[data-role=claude-history]');
+      const historyPanel = claudeHistoryPanel;
+      const historyList  = historyPanel.querySelector('[data-role=history-list]');
+      const historyClose = historyPanel.querySelector('[data-role=history-close]');
+      const historyClear = historyPanel.querySelector('[data-role=history-clear]');
+
+      async function openHistory() {
+        historyPanel.classList.add('open');
+        historyList.innerHTML = '<div class="claude-history-empty">Loading…</div>';
+        try {
+          const res = await fetch('/api/claude/history?client=' + encodeURIComponent(clientName) + '&limit=100');
+          const data = await res.json();
+          renderHistoryList(data.entries || []);
+        } catch (e) {
+          historyList.innerHTML = '<div class="claude-history-empty">Error: ' + e.message + '</div>';
+        }
+      }
+      function renderHistoryList(entries) {
+        if (!entries.length) {
+          historyList.innerHTML = '<div class="claude-history-empty">No prompts yet.</div>';
+          return;
+        }
+        historyList.innerHTML = entries.map(function(e, idx) {
+          const firstLine = (e.text || '').split('\n')[0];
+          const rest      = (e.text || '').split('\n').slice(1).join(' ');
+          const preview   = firstLine + (rest ? ' …' : '');
+          const when      = formatHistoryWhen(e.at);
+          const src       = e.source ? ' <span class="history-src">· ' + e.source + '</span>' : '';
+          return '<div class="claude-history-item" data-idx="' + idx + '">' +
+                   '<div class="history-text">' + escapeHtml(preview) + '</div>' +
+                   '<div class="history-meta">' + when + src + '</div>' +
+                   '<div class="history-actions">' +
+                     '<button class="btn btn-sm" data-act="copy">Copy</button>' +
+                     '<button class="btn btn-sm btn-accent" data-act="send">Send</button>' +
+                   '</div>' +
+                 '</div>';
+        }).join('');
+        historyList.querySelectorAll('.claude-history-item').forEach(function(el) {
+          const idx = Number(el.dataset.idx);
+          const entryText = entries[idx].text || '';
+          el.querySelector('[data-act=copy]').addEventListener('click', function() {
+            navigator.clipboard.writeText(entryText).then(
+              function() { toast('Copied', 'success'); },
+              function() { toast('Copy failed', 'error'); }
+            );
+          });
+          el.querySelector('[data-act=send]').addEventListener('click', function() {
+            subscription.send({ input: entryText + '\r' });
+            savePromptHistory(clientName, entryText, 'replay');
+            historyPanel.classList.remove('open');
+            toast('Replayed prompt', 'success');
+          });
+        });
+      }
+      historyBtn.addEventListener('click', function() {
+        if (historyPanel.classList.contains('open')) historyPanel.classList.remove('open');
+        else openHistory();
+      });
+      historyClose.addEventListener('click', function() { historyPanel.classList.remove('open'); });
+      historyClear.addEventListener('click', async function() {
+        if (!confirm('Clear prompt history for ' + clientName + '?')) return;
+        await fetch('/api/claude/history?client=' + encodeURIComponent(clientName), { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF_TOKEN } });
+        renderHistoryList([]);
+        toast('History cleared', 'success');
+      });
+    }
+
+    // ---- Image paste / drop -> upload -> inject @<path> into the PTY ----
+    async function uploadAndInsert(blob) {
+      const fd = new FormData();
+      const ext = (blob.type.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '');
+      fd.append('file', blob, 'pasted.' + ext);
+      try {
+        const res = await fetch('/api/clients/' + clientName + '/upload_paste', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': CSRF_TOKEN },
+          body: fd
+        });
+        const data = await res.json();
+        if (data.success) {
+          subscription.send({ input: '@' + data.path + ' ' });
+          toast('Pasted ' + data.filename, 'success');
+        } else {
+          toast('Upload failed: ' + (data.error || 'unknown'), 'error');
+        }
+      } catch (e) {
+        toast('Upload failed: ' + e.message, 'error');
+      }
+    }
+
+    bodyEl.addEventListener('paste', function(e) {
+      const items = (e.clipboardData && e.clipboardData.items) || [];
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          e.preventDefault();
+          e.stopPropagation();
+          uploadAndInsert(item.getAsFile());
+          return;
+        }
+      }
+      // No image — let xterm.js handle the paste normally (text)
+    }, true); // capture phase, before xterm's listener
+
+    bodyEl.addEventListener('dragover', function(e) {
+      if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.indexOf('Files') !== -1) {
+        e.preventDefault();
+      }
+    });
+    bodyEl.addEventListener('drop', function(e) {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file && file.type && file.type.startsWith('image/')) {
+        e.preventDefault();
+        uploadAndInsert(file);
+      }
+    });
 
     const resizeObserver = new ResizeObserver(function() {
       if (paneEl.style.display !== 'none') {
-        fitAddon.fit();
+        try { fitAddon.fit(); } catch(e) {}
         subscription.send({ type: 'resize', cols: term.cols, rows: term.rows });
       }
     });
     resizeObserver.observe(bodyEl);
     entry.resizeObserver = resizeObserver;
 
-    document.getElementById('terminalPanel').classList.add('open');
     renderTabs();
-    switchTo(clientName, type);
+    setTimeout(function() { try { fitAddon.fit(); } catch(e) {} term.focus(); }, 30);
   }
 
   function switchTo(clientName, type) {
@@ -306,6 +1084,128 @@
     const entry = terminals[clientName] && terminals[clientName][type];
     if (!entry || !entry.subscription) return;
     entry.subscription.send({ type: 'kill' });
+  }
+
+  // Send a literal Ctrl+C (0x03) to the PTY. Useful when the browser main
+  // thread is too busy with output to register key events.
+  function interruptSession(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry || !entry.subscription) return;
+    entry.subscription.send({ input: '\x03' });
+  }
+
+  // ---- Input queue ----
+  const QUEUE_IDLE_MS = 2000; // wait for 2s of no output before auto-advancing
+
+  function toggleQueue(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry) return;
+    const open = entry.paneEl.classList.toggle('queue-open');
+    if (open) {
+      entry.queueEl.querySelector('.queue-textarea').focus();
+    }
+    // The pane width changed; resize the terminal to match.
+    setTimeout(function() {
+      try { entry.fitAddon.fit(); } catch(_) {}
+      if (entry.subscription) {
+        entry.subscription.send({ type: 'resize', cols: entry.term.cols, rows: entry.term.rows });
+      }
+    }, 0);
+  }
+
+  function getQueueLines(entry) {
+    return entry.queueEl.querySelector('.queue-textarea').value.split(/\r?\n/);
+  }
+
+  function updateQueueStatus(entry) {
+    const lines = getQueueLines(entry);
+    const total = lines.length;
+    const sent  = entry.queueCursor;
+    const statusEl = entry.queueEl.querySelector('.queue-status');
+    const runBtn   = entry.queueEl.querySelector('.queue-run-btn');
+
+    if (entry.queueAuto) runBtn.classList.add('queue-running');
+    else runBtn.classList.remove('queue-running');
+
+    if (sent >= total || lines.slice(sent).every(function(l) { return l.trim() === ''; })) {
+      statusEl.textContent = 'Done · ' + sent + ' sent';
+    } else {
+      const next = lines[sent] || '';
+      const preview = next.length > 32 ? next.slice(0, 32) + '…' : next;
+      const prefix  = entry.queueAuto ? '▶ ' : '';
+      statusEl.textContent = prefix + sent + '/' + total + ' sent · Next → ' + (preview || '(blank)');
+    }
+  }
+
+  function sendQueueNext(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry || !entry.subscription) return;
+
+    const lines = getQueueLines(entry);
+    // Skip past blank lines
+    while (entry.queueCursor < lines.length && lines[entry.queueCursor].trim() === '') {
+      entry.queueCursor++;
+    }
+    if (entry.queueCursor >= lines.length) {
+      pauseQueue(clientName, type);
+      toast('Queue complete', 'success');
+      updateQueueStatus(entry);
+      return;
+    }
+
+    const line = lines[entry.queueCursor];
+    entry.subscription.send({ input: line + '\r' });
+    entry.queueCursor++;
+    entry.queueLastOutputAt = Date.now();
+    updateQueueStatus(entry);
+  }
+
+  function runQueueAll(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry) return;
+    if (entry.queueAuto) { pauseQueue(clientName, type); return; }
+    entry.queueAuto = true;
+    sendQueueNext(clientName, type);
+
+    if (entry.queueAutoTimer) clearInterval(entry.queueAutoTimer);
+    entry.queueAutoTimer = setInterval(function() {
+      if (!entry.queueAuto) return;
+      const idle = Date.now() - entry.queueLastOutputAt;
+      if (idle < QUEUE_IDLE_MS) return;
+
+      const lines = getQueueLines(entry);
+      // Skip past blanks
+      while (entry.queueCursor < lines.length && lines[entry.queueCursor].trim() === '') {
+        entry.queueCursor++;
+      }
+      if (entry.queueCursor >= lines.length) {
+        pauseQueue(clientName, type);
+        toast('Queue complete', 'success');
+        updateQueueStatus(entry);
+        return;
+      }
+      sendQueueNext(clientName, type);
+    }, 400);
+    updateQueueStatus(entry);
+  }
+
+  function pauseQueue(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry) return;
+    entry.queueAuto = false;
+    if (entry.queueAutoTimer) {
+      clearInterval(entry.queueAutoTimer);
+      entry.queueAutoTimer = null;
+    }
+    updateQueueStatus(entry);
+  }
+
+  function resetQueue(clientName, type) {
+    const entry = terminals[clientName] && terminals[clientName][type];
+    if (!entry) return;
+    pauseQueue(clientName, type);
+    entry.queueCursor = 0;
+    updateQueueStatus(entry);
   }
 
   function closeTypeTab(clientName, type) {
@@ -389,6 +1289,8 @@
           '<button onclick="switchTo(\'' + activeClient + '\',\'' + t + '\')">' +
             dot + '<span class="type-badge ' + t + '">' + t + '</span>' +
           '</button>' +
+          '<button class="type-tab-kill" onclick="toggleQueue(\'' + activeClient + '\',\'' + t + '\')" title="Input queue">&#8801;</button>' +
+          '<button class="type-tab-kill" onclick="interruptSession(\'' + activeClient + '\',\'' + t + '\')" title="Send Ctrl+C (interrupt)">^C</button>' +
           '<button class="type-tab-kill" onclick="killSession(\'' + activeClient + '\',\'' + t + '\')" title="Kill session">&#9632;</button>' +
           '<button class="type-tab-close" onclick="closeTypeTab(\'' + activeClient + '\',\'' + t + '\')" title="Close tab">&times;</button>' +
         '</div>';
@@ -413,13 +1315,532 @@
     refreshTimer = setInterval(refreshClients, 8000);
   }
 
+  // ---- Claude usage meters ----
+  let claudeUsageTimer = null;
+
+  function formatUsageReset(resetAt) {
+    if (!resetAt) return '—';
+    const now = Math.floor(Date.now() / 1000);
+    const diff = resetAt - now;
+    if (diff <= 0) return 'now';
+    // Under 24h: show relative. Otherwise: absolute weekday + time.
+    if (diff < 24 * 3600) {
+      const h = Math.floor(diff / 3600);
+      const m = Math.floor((diff % 3600) / 60);
+      if (h > 0) return `${h}h ${m}m`;
+      return `${m}m`;
+    }
+    const d = new Date(resetAt * 1000);
+    const wd = d.toLocaleDateString(undefined, { weekday: 'short' });
+    const tm = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return `${wd} ${tm}`;
+  }
+
+  function applyBucket(el, bucket) {
+    const fillEl    = el.querySelector('[data-role=fill]');
+    const pctEl     = el.querySelector('[data-role=percent]');
+    const resetEl   = el.querySelector('[data-role=reset]');
+    el.classList.remove('warn', 'danger', 'loading');
+    if (!bucket) {
+      fillEl.style.width = '0%';
+      pctEl.textContent  = '—';
+      resetEl.textContent = '—';
+      el.classList.add('loading');
+      return;
+    }
+    const pct = Math.max(0, Math.min(100, Math.round(bucket.percent)));
+    fillEl.style.width = pct + '%';
+    pctEl.textContent  = pct + '% used';
+    resetEl.textContent = 'resets ' + formatUsageReset(bucket.reset_at);
+    if (pct >= 80)      el.classList.add('danger');
+    else if (pct >= 60) el.classList.add('warn');
+  }
+
+  async function refreshClaudeUsage(force) {
+    const root = document.getElementById('claudeUsage');
+    if (!root) return;
+    try {
+      const url = force ? '/api/claude/usage?force=1' : '/api/claude/usage';
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data.error) {
+        root.classList.add('error');
+        root.title = 'Claude usage: ' + data.error;
+        root.querySelectorAll('.usage-meter').forEach(function(m) {
+          applyBucket(m, null);
+          m.querySelector('[data-role=percent]').textContent = 'err';
+        });
+        return;
+      }
+      root.classList.remove('error');
+      root.title = 'Click to refresh · fetched ' + new Date(data.fetched_at * 1000).toLocaleTimeString();
+      applyBucket(root.querySelector('[data-bucket=session]'),       data.session);
+      applyBucket(root.querySelector('[data-bucket=weekly_all]'),    data.weekly_all);
+      applyBucket(root.querySelector('[data-bucket=weekly_sonnet]'), data.weekly_sonnet);
+    } catch (err) {
+      root.classList.add('error');
+      root.title = 'Claude usage fetch failed: ' + err.message;
+    }
+  }
+
+  function startClaudeUsageAutoRefresh() {
+    if (claudeUsageTimer) clearInterval(claudeUsageTimer);
+    // Every 30s: keeps the countdown labels ticking. Backend caches for 60s,
+    // so ~half of these are free cache hits and ~half re-probe the API.
+    claudeUsageTimer = setInterval(refreshClaudeUsage, 30000);
+  }
+
+  document.addEventListener('click', function(e) {
+    const root = e.target.closest('#claudeUsage');
+    if (root) refreshClaudeUsage(true);
+  });
+
+  // ---- Drag-and-drop card reordering ----
+  const dragState = { client: null, targetClient: null, before: false };
+
+  function clearDropMarkers() {
+    document.querySelectorAll('.card.drop-before, .card.drop-after').forEach(function(c) {
+      c.classList.remove('drop-before', 'drop-after');
+    });
+  }
+
+  function setupDragAndDrop() {
+    const grid = document.getElementById('grid');
+
+    grid.addEventListener('dragstart', function(e) {
+      const card = e.target.closest('.card');
+      if (!card) return;
+      dragState.client = card.dataset.client;
+      dragState.targetClient = null;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', dragState.client); } catch(_) {}
+    });
+
+    grid.addEventListener('dragend', function() {
+      const dragging = grid.querySelector('.card.dragging');
+      if (dragging) dragging.classList.remove('dragging');
+      clearDropMarkers();
+      dragState.client = null;
+      dragState.targetClient = null;
+    });
+
+    grid.addEventListener('dragenter', function(e) {
+      if (e.target.closest('.card')) e.preventDefault();
+    });
+
+    grid.addEventListener('dragover', function(e) {
+      e.preventDefault(); // required to allow drop
+      e.dataTransfer.dropEffect = 'move';
+      const card = e.target.closest('.card');
+      if (!card || card.dataset.client === dragState.client) return;
+
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientX - rect.left) < rect.width / 2;
+
+      if (dragState.targetClient !== card.dataset.client || dragState.before !== before) {
+        clearDropMarkers();
+        card.classList.add(before ? 'drop-before' : 'drop-after');
+        dragState.targetClient = card.dataset.client;
+        dragState.before = before;
+      }
+    });
+
+    grid.addEventListener('drop', function(e) {
+      e.preventDefault();
+      if (!dragState.client || !dragState.targetClient) return;
+      if (dragState.client === dragState.targetClient) return;
+
+      const currentOrder = Array.from(grid.querySelectorAll('.card')).map(function(c) {
+        return c.dataset.client;
+      });
+      const fromIdx = currentOrder.indexOf(dragState.client);
+      if (fromIdx < 0) return;
+      currentOrder.splice(fromIdx, 1);
+
+      let toIdx = currentOrder.indexOf(dragState.targetClient);
+      if (toIdx < 0) return;
+      if (!dragState.before) toIdx += 1;
+
+      currentOrder.splice(toIdx, 0, dragState.client);
+      saveCardOrder(currentOrder);
+      renderClients(clients);
+    });
+  }
+
   // ---- Init ----
+  setupDragAndDrop();
   refreshClients().then(function() {
     startAutoRefresh();
     restoreOpenSessions();
   });
+  refreshClaudeUsage();
+  startClaudeUsageAutoRefresh();
+  mgrRefresh();
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && Object.keys(terminals).length > 0) closeAllTerminals();
+    if (e.key === 'Escape') {
+      if (!document.getElementById('mgrOverlay').classList.contains('hidden')) { closeMgr(); return; }
+      if (Object.keys(terminals).length > 0) closeAllTerminals();
+    }
   });
+
+  // ================================================================
+  // Claude Code Manager
+  // ================================================================
+
+  var MGR_STATE    = { skills: [], plugins: [], mcps: [] };
+  var MGR_SUGGEST  = null;
+  var MGR_CUR_TAB  = 'skills';
+  var MGR_TRENDING_TAB = 'skills';
+
+  var MGR_TRENDING = {
+    skills: [
+      { name: 'stripe-billing',   desc: 'Stripe subscriptions, webhooks, billing' },
+      { name: 'rails-security',   desc: 'Brakeman, bundler-audit, OWASP fixes' },
+      { name: 'kamal-deploy',     desc: 'Deploy, rollback, tail logs via Kamal' },
+      { name: 'rails-hotwire',    desc: 'Turbo, Stimulus, Hotwire Native' },
+      { name: 'chrome-extension', desc: 'Manifest V3, content scripts, service workers' },
+      { name: 'rag-embeddings',   desc: 'pgvector, semantic search, embeddings' },
+      { name: 'ai-prompts',       desc: 'Tune AI prompts for cost & accuracy' },
+      { name: 'android-dev',      desc: 'Kotlin, Hotwire Native Android' },
+      { name: 'fix-errors',       desc: 'Pull logs, identify issues, auto-fix' },
+      { name: 'build-deploy',     desc: 'Build extensions & deploy Rails to prod' }
+    ],
+    plugins: [
+      { id: 'claude-mem@thedotmack',               desc: 'Persistent cross-session memory' },
+      { id: 'ui-ux-pro-max@ui-ux-pro-max-skill',   desc: 'Design intelligence, 161 palettes' },
+      { id: 'frontend-design@claude-code-plugins',  desc: 'Production-grade frontend components' },
+      { id: 'ruby-lsp@claude-plugins-official',    desc: 'Ruby language server integration' },
+      { id: 'voicemode@mbailey',                   desc: 'Voice input/output for Claude Code' }
+    ],
+    mcps: [
+      { name: 'filesystem',   config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-filesystem','/home'] }, desc: 'Read/write local files' },
+      { name: 'github',       config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-github'] },            desc: 'GitHub API — PRs, issues, repos' },
+      { name: 'postgres',     config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-postgres','postgresql://localhost/mydb'] }, desc: 'Query PostgreSQL databases' },
+      { name: 'brave-search', config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-brave-search'] },      desc: 'Web search via Brave API' },
+      { name: 'puppeteer',    config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-puppeteer'] },         desc: 'Browser automation & scraping' },
+      { name: 'slack',        config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-slack'] },             desc: 'Slack messages' },
+      { name: 'redis',        config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-redis','redis://localhost'] }, desc: 'Redis key-value store' },
+      { name: 'sqlite',       config: { type:'stdio', command:'npx', args:['-y','@modelcontextprotocol/server-sqlite','./db.sqlite'] }, desc: 'SQLite database queries' }
+    ]
+  };
+
+  function mgrApi(method, path, body) {
+    var opts = { method: method, headers: { 'X-CSRF-Token': CSRF_TOKEN } };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    return fetch(path, opts).then(function(r) { return r.json(); });
+  }
+
+  function mgrRefresh() {
+    return mgrApi('GET', '/api/manager/state').then(function(s) {
+      MGR_STATE = s;
+      document.getElementById('mgrSkillCount').textContent  = s.skills.length;
+      document.getElementById('mgrPluginCount').textContent = s.plugins.length;
+      document.getElementById('mgrMcpCount').textContent    = s.mcps.length;
+      mgrRenderCurrentTab();
+    }).catch(function() {});
+  }
+
+  // ---- Open / close ----
+  function openMgr(tab) {
+    document.getElementById('mgrOverlay').classList.remove('hidden');
+    switchMgrTab(tab || MGR_CUR_TAB);
+  }
+  function closeMgr() {
+    document.getElementById('mgrOverlay').classList.add('hidden');
+  }
+  function openMgrTrending() {
+    showMgrPanel('Trending');
+    document.querySelectorAll('.mgr-tab[data-tab]').forEach(function(t) { t.classList.remove('active'); });
+    switchTrendingTab('skills');
+  }
+  function openMgrSuggest() {
+    showMgrPanel('Suggest');
+    document.querySelectorAll('.mgr-tab[data-tab]').forEach(function(t) { t.classList.remove('active'); });
+    if (!MGR_SUGGEST) {
+      mgrApi('GET', '/api/manager/suggestions').then(function(data) {
+        MGR_SUGGEST = data;
+        mgrRenderSuggestions(data);
+      });
+    } else {
+      mgrRenderSuggestions(MGR_SUGGEST);
+    }
+  }
+
+  // ---- Tab switching ----
+  function showMgrPanel(name) {
+    ['Skills','Plugins','Mcp','Trending','Suggest'].forEach(function(n) {
+      var el = document.getElementById('mgrPanel' + n);
+      if (el) el.classList.toggle('hidden', n !== name);
+    });
+  }
+  function switchMgrTab(tab, el) {
+    MGR_CUR_TAB = tab || MGR_CUR_TAB;
+    if (el) {
+      document.querySelectorAll('.mgr-tab[data-tab]').forEach(function(t) { t.classList.remove('active'); });
+      el.classList.add('active');
+    } else {
+      document.querySelectorAll('.mgr-tab[data-tab]').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.tab === MGR_CUR_TAB);
+      });
+    }
+    var panelName = MGR_CUR_TAB.charAt(0).toUpperCase() + MGR_CUR_TAB.slice(1);
+    showMgrPanel(panelName);
+    mgrRenderCurrentTab();
+  }
+
+  function mgrRenderCurrentTab() {
+    var tab = MGR_CUR_TAB;
+    if (tab === 'skills')  mgrRenderSkills(MGR_STATE.skills);
+    if (tab === 'plugins') mgrRenderPlugins(MGR_STATE.plugins);
+    if (tab === 'mcp')     mgrRenderMcps(MGR_STATE.mcps);
+  }
+
+  // ---- Render helpers ----
+  function mgrEmpty(msg) {
+    return '<div class="mgr-empty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' + escapeHtml(msg) + '</div>';
+  }
+
+  function mgrRenderSkills(skills) {
+    var el = document.getElementById('mgrSkillsList');
+    if (!skills.length) { el.innerHTML = mgrEmpty('No skills installed'); return; }
+    el.innerHTML = skills.map(function(s) {
+      return '<div class="mgr-item">' +
+        '<div class="mgr-dot"></div>' +
+        '<div class="mgr-item-body">' +
+          '<div class="mgr-name">' + escapeHtml(s.name) + '</div>' +
+          (s.description ? '<div class="mgr-desc">' + escapeHtml(s.description) + '</div>' : '') +
+        '</div>' +
+        '<div class="mgr-actions">' +
+          '<button class="mgr-ibtn" title="Remove" onclick="mgrRemoveSkill(\'' + escapeHtml(s.name) + '\')">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function mgrRenderPlugins(plugins) {
+    var el = document.getElementById('mgrPluginsList');
+    if (!plugins.length) { el.innerHTML = mgrEmpty('No plugins enabled'); return; }
+    el.innerHTML = plugins.map(function(p) {
+      return '<div class="mgr-item">' +
+        '<div class="mgr-dot ' + (p.enabled ? '' : 'off') + '"></div>' +
+        '<div class="mgr-item-body">' +
+          '<div class="mgr-name">' + escapeHtml(p.id) + '</div>' +
+          '<div class="mgr-desc">' + (p.enabled ? 'enabled' : 'disabled') + '</div>' +
+        '</div>' +
+        '<div class="mgr-actions">' +
+          '<button class="mgr-ibtn tog" title="' + (p.enabled ? 'Disable' : 'Enable') + '"' +
+            ' onclick="mgrTogglePlugin(\'' + escapeHtml(p.id) + '\',' + !p.enabled + ')">' +
+            (p.enabled ? '&#x25CB;' : '&#x25CF;') +
+          '</button>' +
+          '<button class="mgr-ibtn" title="Remove" onclick="mgrRemovePlugin(\'' + escapeHtml(p.id) + '\')">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function mgrRenderMcps(mcps) {
+    var el = document.getElementById('mgrMcpList');
+    if (!mcps.length) { el.innerHTML = mgrEmpty('No MCP servers configured'); return; }
+    el.innerHTML = mcps.map(function(m) {
+      var c = m.config || {};
+      var detail = c.type === 'stdio'
+        ? [c.command].concat(c.args || []).filter(Boolean).join(' ')
+        : (c.url || '');
+      return '<div class="mgr-item">' +
+        '<div class="mgr-dot" style="background:var(--green)"></div>' +
+        '<div class="mgr-item-body">' +
+          '<div class="mgr-name">' + escapeHtml(m.name) + '</div>' +
+          '<div class="mgr-desc">' + escapeHtml((c.type||'stdio') + ' · ' + detail.slice(0,55)) + '</div>' +
+        '</div>' +
+        '<div class="mgr-actions">' +
+          '<button class="mgr-ibtn" title="Remove" onclick="mgrRemoveMcp(\'' + escapeHtml(m.name) + '\')">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  // ---- Skills actions ----
+  function mgrInstallSkill(repo) {
+    repo = repo || document.getElementById('mgrSkillRepo').value.trim();
+    if (!repo) return;
+    showToast('Installing ' + repo + '…', 'info');
+    mgrApi('POST', '/api/manager/skills/install', { repo: repo }).then(function(r) {
+      if (r.ok) { showToast('Installed ' + r.name, 'success'); document.getElementById('mgrSkillRepo').value = ''; mgrRefresh(); }
+      else showToast(r.error, 'error');
+    });
+  }
+  function mgrRemoveSkill(name) {
+    if (!confirm('Remove skill "' + name + '"?')) return;
+    mgrApi('POST', '/api/manager/skills/remove', { name: name }).then(function(r) {
+      if (r.ok) { showToast('Removed ' + name, 'success'); mgrRefresh(); }
+      else showToast(r.error, 'error');
+    });
+  }
+
+  // ---- Plugin actions ----
+  function mgrAddPlugin(id) {
+    id = id || document.getElementById('mgrPluginId').value.trim();
+    if (!id) return;
+    mgrApi('POST', '/api/manager/plugins/add', { id: id }).then(function(r) {
+      if (r.ok) { showToast('Enabled ' + id, 'success'); document.getElementById('mgrPluginId').value = ''; mgrRefresh(); }
+      else showToast(r.error, 'error');
+    });
+  }
+  function mgrTogglePlugin(id, enabled) {
+    mgrApi('POST', '/api/manager/plugins/toggle', { id: id, enabled: enabled }).then(function(r) {
+      if (r.ok) { showToast((enabled ? 'Enabled ' : 'Disabled ') + id, 'success'); mgrRefresh(); }
+      else showToast(r.error, 'error');
+    });
+  }
+  function mgrRemovePlugin(id) {
+    if (!confirm('Remove plugin "' + id + '"?')) return;
+    mgrApi('POST', '/api/manager/plugins/remove', { id: id }).then(function(r) {
+      if (r.ok) { showToast('Removed ' + id, 'success'); mgrRefresh(); }
+      else showToast(r.error, 'error');
+    });
+  }
+
+  // ---- MCP actions ----
+  function mgrToggleMcpType() {
+    var t = document.getElementById('mgrMcpType').value;
+    document.getElementById('mgrMcpStdio').style.display   = t === 'stdio' ? '' : 'none';
+    document.getElementById('mgrMcpUrlWrap').style.display = t !== 'stdio' ? '' : 'none';
+  }
+  function mgrAddMcp(name, config) {
+    if (!name) {
+      name = document.getElementById('mgrMcpName').value.trim();
+      var type = document.getElementById('mgrMcpType').value;
+      if (!name) { showToast('Name is required', 'error'); return; }
+      if (type === 'stdio') {
+        var cmd  = document.getElementById('mgrMcpCmd').value.trim();
+        if (!cmd) { showToast('Command is required', 'error'); return; }
+        var args = document.getElementById('mgrMcpArgs').value.trim();
+        config = { type: type, command: cmd, args: args ? args.split(',').map(function(a) { return a.trim(); }).filter(Boolean) : [] };
+      } else {
+        var url = document.getElementById('mgrMcpUrl').value.trim();
+        if (!url) { showToast('URL is required', 'error'); return; }
+        config = { type: type, url: url };
+      }
+    }
+    mgrApi('POST', '/api/manager/mcp/add', { name: name, config: config }).then(function(r) {
+      if (r.ok) {
+        showToast('Added MCP "' + name + '"', 'success');
+        ['mgrMcpName','mgrMcpCmd','mgrMcpArgs','mgrMcpUrl'].forEach(function(id) {
+          var el = document.getElementById(id); if (el) el.value = '';
+        });
+        mgrRefresh();
+      } else showToast(r.error, 'error');
+    });
+  }
+  function mgrRemoveMcp(name) {
+    if (!confirm('Remove MCP server "' + name + '"?')) return;
+    mgrApi('POST', '/api/manager/mcp/remove', { name: name }).then(function(r) {
+      if (r.ok) { showToast('Removed "' + name + '"', 'success'); mgrRefresh(); }
+      else showToast(r.error, 'error');
+    });
+  }
+
+  // ---- Trending ----
+  function switchTrendingTab(tab, el) {
+    MGR_TRENDING_TAB = tab;
+    var panel = document.getElementById('mgrPanelTrending');
+    if (el) {
+      panel.querySelectorAll('.mgr-tab').forEach(function(t) { t.classList.remove('active'); });
+      el.classList.add('active');
+    }
+    var installedSkills  = new Set(MGR_STATE.skills.map(function(s)  { return s.name; }));
+    var installedPlugins = new Set(MGR_STATE.plugins.map(function(p) { return p.id; }));
+    var installedMcps    = new Set(MGR_STATE.mcps.map(function(m)    { return m.name; }));
+    var list = document.getElementById('mgrTrendingList');
+
+    if (tab === 'skills') {
+      list.innerHTML = MGR_TRENDING.skills.map(function(s) {
+        var inst = installedSkills.has(s.name);
+        return '<div class="mgr-t-item">' +
+          '<div class="mgr-dot"></div>' +
+          '<div class="mgr-t-body"><div class="mgr-name">' + escapeHtml(s.name) + '</div><div class="mgr-desc">' + escapeHtml(s.desc) + '</div></div>' +
+          (inst ? '<span class="mgr-t-installed">&#x2713; installed</span>'
+                : '<button class="mgr-quick" onclick="mgrInstallSkill(\'' + escapeHtml(s.name) + '\');this.disabled=true;this.textContent=\'…\'">Install</button>') +
+          '</div>';
+      }).join('');
+    } else if (tab === 'plugins') {
+      list.innerHTML = MGR_TRENDING.plugins.map(function(p) {
+        var inst = installedPlugins.has(p.id);
+        return '<div class="mgr-t-item">' +
+          '<div class="mgr-dot" style="background:var(--accent)"></div>' +
+          '<div class="mgr-t-body"><div class="mgr-name">' + escapeHtml(p.id) + '</div><div class="mgr-desc">' + escapeHtml(p.desc) + '</div></div>' +
+          (inst ? '<span class="mgr-t-installed">&#x2713; enabled</span>'
+                : '<button class="mgr-quick" onclick="mgrAddPlugin(\'' + escapeHtml(p.id) + '\');this.disabled=true;this.textContent=\'…\'">Enable</button>') +
+          '</div>';
+      }).join('');
+    } else {
+      list.innerHTML = MGR_TRENDING.mcps.map(function(m) {
+        var inst = installedMcps.has(m.name);
+        var cfg  = JSON.stringify(m.config).replace(/'/g, "\\'");
+        return '<div class="mgr-t-item">' +
+          '<div class="mgr-dot" style="background:var(--green)"></div>' +
+          '<div class="mgr-t-body"><div class="mgr-name">' + escapeHtml(m.name) + '</div><div class="mgr-desc">' + escapeHtml(m.desc) + '</div></div>' +
+          (inst ? '<span class="mgr-t-installed">&#x2713; added</span>'
+                : '<button class="mgr-quick" onclick="mgrAddMcp(\'' + escapeHtml(m.name) + '\',' + cfg.replace(/"/g,"'") + ');this.disabled=true;this.textContent=\'…\'">Add</button>') +
+          '</div>';
+      }).join('');
+    }
+  }
+
+  // ---- Suggestions ----
+  function mgrRenderSuggestions(data) {
+    var el = document.getElementById('mgrSuggestList');
+    var total = data.skill_suggestions.length + data.mcp_suggestions.length;
+    var html = '<div class="mgr-sug-intro">Analyzed <b>' + data.prompt_count.toLocaleString() +
+      '</b> prompts. Found <b>' + total + '</b> recommendation' + (total !== 1 ? 's' : '') + ' based on your work.</div>';
+
+    if (data.top_projects && data.top_projects.length) {
+      html += '<div style="margin-bottom:12px"><div class="mgr-form-label" style="margin-bottom:5px">Most active projects</div><div>';
+      data.top_projects.forEach(function(p) {
+        var short = p.path.split('/').slice(-2).join('/');
+        html += '<span class="mgr-proj-chip"><b>' + p.count + '</b> ' + escapeHtml(short) + '</span>';
+      });
+      html += '</div></div>';
+    }
+
+    if (!total) {
+      html += '<div class="mgr-empty"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>All relevant tools already installed!</div>';
+    } else {
+      if (data.skill_suggestions.length) {
+        html += '<div class="mgr-form-label" style="margin-bottom:5px">Recommended skills</div>';
+        data.skill_suggestions.forEach(function(s) {
+          html += '<div class="mgr-sug-item">' +
+            '<div class="mgr-sug-icon">&#x26A1;</div>' +
+            '<div class="mgr-sug-body">' +
+              '<div class="mgr-sug-name">' + escapeHtml(s.name) + '</div>' +
+              '<div class="mgr-sug-reason">' + escapeHtml(s.reason) + '</div>' +
+              '<div class="mgr-sug-btns">' +
+                '<button class="btn btn-sm btn-accent" onclick="mgrInstallSkill(\'' + escapeHtml(s.name) + '\');this.disabled=true;this.textContent=\'Installing…\'">Install</button>' +
+                '<button class="btn btn-sm" onclick="this.closest(\'.mgr-sug-item\').remove()">Skip</button>' +
+              '</div>' +
+            '</div></div>';
+        });
+      }
+      if (data.mcp_suggestions.length) {
+        html += '<div class="mgr-form-label" style="margin-bottom:5px;margin-top:10px">Recommended MCP servers</div>';
+        data.mcp_suggestions.forEach(function(m) {
+          var trendMcp = MGR_TRENDING.mcps.find(function(t) { return t.name === m.name; });
+          var onclk = trendMcp
+            ? 'mgrAddMcp(\'' + escapeHtml(m.name) + '\',' + JSON.stringify(trendMcp.config).replace(/"/g,"'") + ');this.disabled=true;this.textContent=\'Adding…\''
+            : 'openMgr(\'mcp\')';
+          html += '<div class="mgr-sug-item">' +
+            '<div class="mgr-sug-icon mcp">&#x25A3;</div>' +
+            '<div class="mgr-sug-body">' +
+              '<div class="mgr-sug-name">' + escapeHtml(m.name) + '</div>' +
+              '<div class="mgr-sug-reason">' + escapeHtml(m.reason) + '</div>' +
+              '<div class="mgr-sug-btns">' +
+                '<button class="btn btn-sm btn-accent" onclick="' + onclk + '">Add</button>' +
+                '<button class="btn btn-sm" onclick="this.closest(\'.mgr-sug-item\').remove()">Skip</button>' +
+              '</div>' +
+            '</div></div>';
+        });
+      }
+    }
+    el.innerHTML = html;
+  }
 </script>

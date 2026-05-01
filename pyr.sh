@@ -37,7 +37,7 @@ case "$ACTION" in
     fi
     echo ""
     echo "Port assignments:"
-    echo "  profvault:1100"
+    echo "  myjira:1200  profvault:1100"
     echo "  avon:3001  naturessunshine:3002  stampinup:3003  monat:3004  partylite:3005  kwiverr:3006"
     echo "  naturessunshine:3004  monat:3005  avonpr:3006  bluesun:3007"
     echo "  greenzone:3008  idlife:3009  kwiverr:3010  listenuniversity:3011"
@@ -74,8 +74,17 @@ case "$ACTION" in
     fi
     docker compose restart "$@"
     ;;
+  restart-vite)
+    CLIENT="${1:?Usage: ./pyr.sh restart-vite <client>}"
+    case "$CLIENT" in
+      ownsites) COMPOSE_DIR_OVERRIDE="/home/kalyan/platform/skchakri/ownsites" ;;
+      *) echo "No vite service registered for client: $CLIENT"; exit 1 ;;
+    esac
+    echo "Restarting vite in $COMPOSE_DIR_OVERRIDE..."
+    docker compose -f "$COMPOSE_DIR_OVERRIDE/docker-compose.yml" restart vite
+    ;;
   *)
-    echo "Usage: ./pyr.sh {build|up|down|logs|console|bash|status|restart} [clients...]"
+    echo "Usage: ./pyr.sh {build|up|down|logs|console|bash|status|restart|restart-vite} [clients...]"
     exit 1
     ;;
 esac

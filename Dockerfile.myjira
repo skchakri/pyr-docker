@@ -1,0 +1,27 @@
+FROM ruby:3.2.2-slim
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+    build-essential \
+    curl \
+    git \
+    libpq-dev \
+    libyaml-dev \
+    pkg-config \
+    postgresql-client \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN gem install bundler
+
+WORKDIR /rails
+
+EXPOSE 1200
+
+CMD ["bash"]

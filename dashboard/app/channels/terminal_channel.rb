@@ -1,6 +1,11 @@
 require "pty"
 
 class TerminalChannel < ApplicationCable::Channel
+  # Whitelists for Claude CLI flag values — anything not listed is dropped
+  # before we interpolate into a shell command.
+  CLAUDE_MODELS  = %w[default sonnet opus haiku claude-sonnet-4-6 claude-opus-4-6 claude-haiku-4-5].freeze
+  CLAUDE_EFFORTS = %w[low medium high max].freeze
+
   def subscribed
     @client      = params[:client]
     @type        = params[:type]
@@ -41,6 +46,21 @@ class TerminalChannel < ApplicationCable::Channel
 
   private
 
+  # Build "--model X --effort Y" from subscribe params, after whitelisting.
+  # "default" (or anything unrecognized) means: don't pass that flag.
+  def claude_flags
+    parts = []
+    model = params[:model].to_s
+    if CLAUDE_MODELS.include?(model) && model != "default"
+      parts << "--model #{Shellwords.escape(model)}"
+    end
+    effort = params[:effort].to_s
+    if CLAUDE_EFFORTS.include?(effort)
+      parts << "--effort #{Shellwords.escape(effort)}"
+    end
+    parts.empty? ? "" : " #{parts.join(' ')}"
+  end
+
   def kill_session
     session = PtySessionStore.get(@session_key)
     return unless session
@@ -70,6 +90,9 @@ class TerminalChannel < ApplicationCable::Channel
                   : "cd #{Shellwords.escape(host_path)} && PS1='#{@client} \\w\\$ ' exec bash"
     when "terminal"
       "cd #{Shellwords.escape(host_path)} && PS1='#{@client} \\w\\$ ' exec bash"
+    when "claude"
+      flags = claude_flags
+      "cd #{Shellwords.escape(host_path)} && exec claude#{flags}"
     when "logs"
       if uses_docker
         "cd #{Shellwords.escape(compose_dir)} && docker compose logs -f --tail=100 #{Shellwords.escape(compose_svc)}"
@@ -91,12 +114,45 @@ class TerminalChannel < ApplicationCable::Channel
 
     reader, writer, pid = PTY.spawn(cmd)
 
+    # Rate-limit PTY -> WebSocket broadcasts: at most one frame every 20ms
+    # (50 fps). High-volume output (claude streaming, big tool dumps) is
+    # accumulated in `pending` and flushed once per window. Without this the
+    # browser main thread spends all its time in JSON.parse + xterm.write
+    # and input events stop firing.
     read_thread = Thread.new do
+      pending        = +""
+      last_flush     = Time.now
+      flush_interval = 0.020   # 20ms ~= 50fps
+      max_pending    = 262_144 # 256KB safety cap so memory doesn't balloon
+
       loop do
-        data = reader.readpartial(4096)
-        PtySessionStore.append_buffer(@session_key, data)
-        ActionCable.server.broadcast(@stream_id, { output: data })
+        # Sleep up to whatever time is left in the current flush window
+        until_next = flush_interval - (Time.now - last_flush)
+        until_next = 0 if until_next.negative?
+
+        ready = IO.select([ reader ], nil, nil, until_next)
+
+        if ready
+          begin
+            pending << reader.read_nonblock(32_768)
+          rescue IO::WaitReadable
+            # spurious; loop and try again
+          end
+        end
+
+        elapsed = Time.now - last_flush
+        if !pending.empty? && (elapsed >= flush_interval || pending.bytesize >= max_pending)
+          out = pending.dup
+          pending.clear
+          PtySessionStore.append_buffer(@session_key, out)
+          ActionCable.server.broadcast(@stream_id, { output: out })
+          last_flush = Time.now
+        end
       rescue EOFError, Errno::EIO, IOError
+        unless pending.empty?
+          PtySessionStore.append_buffer(@session_key, pending)
+          ActionCable.server.broadcast(@stream_id, { output: pending })
+        end
         ActionCable.server.broadcast(@stream_id, { output: "\r\n\e[90m[Process exited]\e[0m\r\n", exited: true })
         PtySessionStore.delete(@session_key)
         break

@@ -7,4 +7,14 @@ ownsites:
   host_path: /home/kalyan/platform/skchakri/ownsites
   database: ownsites_development
   type: docker_compose
+  vite_service: vite
+  access_url: "http://localhost:8088/"
+
+dashboard:
+  name: dashboard
+  port: "3000"
+  host_path: /home/kalyan/pyr-docker/dashboard
+  database: "(none)"
+  type: process
+  start_cmd: "PORT=3000 bin/rails server -b 0.0.0.0 -p 3000 > log/dashboard.log 2>&1"
 

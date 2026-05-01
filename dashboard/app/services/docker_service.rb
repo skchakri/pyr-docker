@@ -82,6 +82,17 @@ class DockerService
       end
     end
 
+    def restart_vite(name)
+      config = client_definitions[name]
+      return { success: false, output: "Unknown client" } unless config
+
+      service = config[:vite_service]
+      return { success: false, output: "No vite service registered for #{name}" } if service.blank?
+      return { success: false, output: "Vite restart only supported for docker_compose clients" } unless config[:type] == "docker_compose"
+
+      run_compose_in(config[:compose_dir], "restart", service)
+    end
+
     def logs(name, lines: 200)
       config = client_definitions[name]
       return "" unless config

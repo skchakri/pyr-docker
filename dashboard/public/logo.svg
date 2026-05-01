@@ -1,0 +1,22 @@
+<svg width="280" height="56" viewBox="0 0 280 56" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+  </defs>
+  <!-- Icon square -->
+  <rect width="48" height="48" rx="10" y="4" fill="url(#lbg)"/>
+  <!-- Mini container grid (2x2) -->
+  <rect x="8" y="12" width="14" height="12" rx="2" fill="#4fc3f7" opacity="0.9"/>
+  <rect x="26" y="12" width="14" height="12" rx="2" fill="#4fc3f7" opacity="0.7"/>
+  <rect x="8" y="28" width="14" height="12" rx="2" fill="#0288d1" opacity="0.9"/>
+  <rect x="26" y="28" width="14" height="12" rx="2" fill="#0288d1" opacity="0.7"/>
+  <!-- Fire accent -->
+  <ellipse cx="42" cy="10" rx="4" ry="8" fill="#ff6b35" opacity="0.9"/>
+  <ellipse cx="42" cy="8" rx="2.5" ry="5" fill="#ffc947" opacity="0.9"/>
+  <!-- PYR text -->
+  <text x="64" y="28" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="26" fill="#ffffff" letter-spacing="4">PYR</text>
+  <!-- DOCKER text -->
+  <text x="64" y="48" font-family="Arial, Helvetica, sans-serif" font-weight="normal" font-size="14" fill="#4fc3f7" letter-spacing="4">DOCKER</text>
+</svg>
