@@ -128,25 +128,33 @@ services:
       REDIS_URL: redis://127.0.0.1:6379/4
     command: *common-command
 
-  # ==================== KWIVERR (3006) ====================
-  kwiverr:
-    <<: *common
-    container_name: pyr-kwiverr
-    working_dir: /opt/pyr/clients/kwiverr
+  # ==================== ZEVENTS (3007) ====================
+  zevents:
+    build:
+      context: .
+      dockerfile: Dockerfile.zevents
+    container_name: pyr-zevents
+    network_mode: host
+    working_dir: /opt/zevents
     volumes:
-      - /home/kalyan/platform/clients/kwiverr/pyr:/opt/pyr
-      - bundle_cache:/usr/local/bundle
+      - /home/kalyan/platform/clients/zevents:/opt/zevents
+      - zevents_bundle_cache:/usr/local/bundle
+      - zevents_node_modules:/opt/zevents/node_modules
       - ~/.ssh:/root/.ssh:ro
-      - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
-      - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+      - ./entrypoint-zevents.sh:/opt/pyr-docker/entrypoint-zevents.sh:ro
     environment:
-      <<: *common-env
-      CLIENT: kwiverr
-      PORT: "3006"
-      DATABASE_NAME: pyr_kwiverr_dev
-      MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_kwiverr_development?authSource=admin
-      REDIS_URL: redis://127.0.0.1:6379/5
-    command: *common-command
+      RAILS_ENV: development
+      NODE_ENV: development
+      PORT: "3007"
+      WEBPACKER_DEV_SERVER_PORT: "3035"
+      ZEVENTS_DB_HOST: 127.0.0.1
+      ZEVENTS_DB_PORT: "3306"
+      ZEVENTS_DB_USER: root
+      ZEVENTS_DB_PASSWORD: password
+      ZEVENTS_DB_NAME: zevents_development
+      REDIS_URL: redis://127.0.0.1:6379/7
+    command: /opt/pyr-docker/entrypoint-zevents.sh
+    restart: unless-stopped
 
   # ==================== PROFVAULT (1100) ====================
   profvault:
@@ -204,9 +212,76 @@ services:
     command: /opt/pyr-docker/entrypoint-myjira.sh
     restart: unless-stopped
 
+  # ==================== PLAN MY TRIP (3010) ====================
+  planmytrip:
+    build:
+      context: .
+      dockerfile: Dockerfile.plan_my_trip
+    container_name: pyr-planmytrip
+    network_mode: host
+    working_dir: /rails
+    volumes:
+      - /home/kalyan/platform/skchakri/plan_my_trip:/rails
+      - planmytrip_bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./entrypoint-plan_my_trip.sh:/opt/pyr-docker/entrypoint-plan_my_trip.sh:ro
+      # Host Claude Code CLI + auth, so services with provider=claude_cli
+      # (DestinationBrief, RouteLandmarksBuilder, TripStructureBuilder,
+      # ItineraryBuilder) bill against the operator's subscription instead
+      # of ANTHROPIC_API_KEY. Symlink resolves at mount time so version
+      # bumps on the host propagate without recreating the container.
+      - /home/kalyan/.local/bin/claude:/usr/local/bin/claude:ro
+      - /home/kalyan/.claude:/root/.claude
+    environment:
+      RAILS_ENV: development
+      PORT: "3010"
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: "5432"
+      DATABASE_USER: root
+      DATABASE_PASSWORD: password
+      REDIS_URL: redis://127.0.0.1:6379/13
+      # API-key fallback for prompts configured with provider=anthropic.
+      # Left blank → those services fall back to deterministic skeletons.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    command: /opt/pyr-docker/entrypoint-plan_my_trip.sh
+    restart: unless-stopped
+
+  # ==================== QUAPT AGENTS (3030) ====================
+  quapt_agents:
+    build:
+      context: .
+      dockerfile: Dockerfile.quapt_agents
+    container_name: pyr-quapt-agents
+    network_mode: host
+    working_dir: /rails
+    volumes:
+      - /home/kalyan/platform/quapt/poc:/rails
+      - quapt_agents_bundle_cache:/usr/local/bundle
+      - ~/.ssh:/root/.ssh:ro
+      - ./entrypoint-quapt_agents.sh:/opt/pyr-docker/entrypoint-quapt_agents.sh:ro
+    environment:
+      RAILS_ENV: development
+      PORT: "3030"
+      # Shared dev_datastack Postgres (read by config/database.yml).
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: root
+      PGPASSWORD: password
+      # Action Cable (live Turbo Streams) + Redis velocity counter.
+      REDIS_URL: redis://127.0.0.1:6379/14
+      # Powers the Claude agentic loop (anthropic gem). Inherited from host env.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-7}
+    command: /opt/pyr-docker/entrypoint-quapt_agents.sh
+    restart: unless-stopped
+
 volumes:
   bundle_cache:
+  quapt_agents_bundle_cache:
+  zevents_bundle_cache:
+  zevents_node_modules:
   profvault_bundle_cache:
   profvault_jobspy_venv:
   myjira_bundle_cache:
   myjira_playwright_cache:
+  planmytrip_bundle_cache:

@@ -1,0 +1,31 @@
+FROM ruby:3.2.2-slim
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+# System deps for Rails 8 + PostgreSQL + Active Storage (libvips) + git for bundler.
+# Node is intentionally omitted — QUAPT Agents uses importmap (no JS bundler) and
+# the standalone Tailwind binary (tailwindcss-rails), so no Node toolchain is needed.
+# The Claude agentic loop calls the Anthropic API directly via the `anthropic` gem
+# (ANTHROPIC_API_KEY), so no claude CLI mount is required either.
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+      build-essential \
+      curl \
+      git \
+      libpq-dev \
+      libyaml-dev \
+      libvips \
+      pkg-config \
+      postgresql-client \
+      openssh-client \
+      tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN gem install bundler
+
+WORKDIR /rails
+
+EXPOSE 3030
+
+CMD ["bash"]

@@ -32,7 +32,7 @@ class DockerService
 
       case config[:type]
       when "docker_compose"
-        run_compose_in(config[:compose_dir], "up", "-d", config[:compose_service])
+        run_compose_in(config[:compose_dir], "up", "-d", *compose_target_args(config))
       when "process"
         pid_file = "/tmp/dashboard_#{name}.pid"
         cmd = "cd #{Shellwords.escape(config[:host_path])} && #{config[:start_cmd]} & echo $! > #{pid_file}"
@@ -49,7 +49,7 @@ class DockerService
 
       case config[:type]
       when "docker_compose"
-        run_compose_in(config[:compose_dir], "stop", config[:compose_service])
+        run_compose_in(config[:compose_dir], "stop", *compose_target_args(config))
       when "process"
         pid_file = "/tmp/dashboard_#{name}.pid"
         if File.exist?(pid_file)
@@ -72,7 +72,14 @@ class DockerService
 
       case config[:type]
       when "docker_compose"
-        run_compose_in(config[:compose_dir], "restart", config[:compose_service])
+        # Ensure the full stack is up first (creates/starts any missing services such
+        # as the nginx proxy that fronts the Access URL), then restart for a clean boot.
+        if config[:compose_all]
+          run_compose_in(config[:compose_dir], "up", "-d")
+          run_compose_in(config[:compose_dir], "restart")
+        else
+          run_compose_in(config[:compose_dir], "restart", config[:compose_service])
+        end
       when "process"
         stop(name)
         sleep 1
@@ -100,7 +107,7 @@ class DockerService
       case config[:type]
       when "docker_compose"
         stdout, stderr, _st = Open3.capture3(
-          "docker", "compose", "logs", "--tail=#{lines}", "--no-color", config[:compose_service],
+          "docker", "compose", "logs", "--tail=#{lines}", "--no-color", *compose_target_args(config),
           chdir: config[:compose_dir]
         )
         (stdout + stderr).strip
@@ -151,6 +158,17 @@ class DockerService
     end
 
     private
+
+    # Service arguments for `docker compose` lifecycle commands. When a client sets
+    # `compose_all: true`, we operate on the whole compose project (no service filter)
+    # so multi-service apps bring up every service — including front proxies like the
+    # ownsites nginx container on :8088 that the Access button targets. Otherwise we
+    # scope to the single declared service.
+    def compose_target_args(config)
+      return [] if config[:compose_all]
+
+      [ config[:compose_service] ].compact
+    end
 
     def process_status(port)
       out, _st = Open3.capture2("bash", "-c", "lsof -ti :#{port} 2>/dev/null")

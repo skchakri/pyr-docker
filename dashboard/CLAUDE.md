@@ -44,7 +44,7 @@ The parent project has a `pyr.sh` wrapper for the docker-compose lifecycle:
 ### Two services do all the work
 
 **`app/services/docker_service.rb`** — single source of truth for client definitions and lifecycle. It merges two sources:
-1. **PYR clients** parsed from `../docker-compose.yml` (stampinup, partylite, avon, naturessunshine, monat, kwiverr, profvault). Each has a port, container name, host path, database, and git branch.
+1. **PYR clients** parsed from `../docker-compose.yml` (stampinup, partylite, avon, naturessunshine, monat, profvault). Each has a port, container name, host path, database, and git branch.
 2. **Extra clients** from `config/extra_clients.yml` — currently `ownsites` (a separate `docker_compose` app).
 
 Each client has a **type** that controls how start/stop/restart/logs work:

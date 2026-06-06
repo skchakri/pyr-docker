@@ -1,0 +1,46 @@
+FROM ruby:2.6.5
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 DEBIAN_FRONTEND=noninteractive
+
+# Ruby 2.6.5 image is on Debian Buster — archive its apt sources so installs still work.
+RUN echo "deb [check-valid-until=no] http://archive.debian.org/debian buster main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb [check-valid-until=no] http://archive.debian.org/debian-security buster/updates main contrib non-free" >> /etc/apt/sources.list
+
+RUN apt-get update -qq -o Acquire::Check-Valid-Until=false && \
+    apt-get install -y --no-install-recommends --allow-unauthenticated \
+      build-essential \
+      git \
+      openssh-client \
+      pkg-config \
+      libssl-dev \
+      libffi-dev \
+      default-libmysqlclient-dev \
+      default-mysql-client \
+      freetds-dev \
+      freetds-bin \
+      libvips42 \
+      imagemagick \
+      libmagickwand-dev \
+      libpq-dev \
+      curl \
+      gnupg2 \
+      ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Node 14 from the official Node.js distribution. NodeSource's deb repo has
+# expired GPG keys for buster, so we install the prebuilt binary directly.
+RUN curl -fsSL https://nodejs.org/dist/v14.21.3/node-v14.21.3-linux-x64.tar.xz -o /tmp/node.tar.xz && \
+    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 --no-same-owner && \
+    rm /tmp/node.tar.xz && \
+    ln -sf /usr/local/bin/node /usr/local/bin/nodejs && \
+    node --version && npm --version
+
+RUN npm install -g yarn
+
+RUN gem install bundler -v '2.1.4'
+
+WORKDIR /opt/zevents
+
+EXPOSE 3007 3035
+
+CMD ["bash"]

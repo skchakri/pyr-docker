@@ -479,7 +479,7 @@
   // Map a dashboard client name to its myjira project slug.
   // PYR platform clients get a "pyr-" prefix; standalone apps use their bare name.
   function myjiraSlug(name) {
-    const pyrClients = ['avon', 'naturessunshine', 'stampinup', 'monat', 'partylite', 'kwiverr'];
+    const pyrClients = ['avon', 'naturessunshine', 'stampinup', 'monat', 'partylite'];
     if (pyrClients.indexOf(name) !== -1) return 'pyr-' + name;
     return name;
   }
@@ -618,6 +618,7 @@
     let claudeToolbarEl    = null;
     let claudeVoiceBarEl   = null;
     let claudeHistoryPanel = null;
+    let claudeMicFabEl     = null;
     if (type === 'claude') {
       const cfg = getClaudeSettings(clientName);
       claudeToolbarEl = document.createElement('div');
@@ -681,7 +682,22 @@
 
     const bodyEl = document.createElement('div');
     bodyEl.className = 'terminal-body';
+    if (type === 'claude') bodyEl.classList.add('terminal-body-claude');
     paneMainEl.appendChild(bodyEl);
+
+    // Claude-only: floating mic button overlaid at the bottom-right of the
+    // terminal body, so users can speak right next to the prompt without
+    // reaching for the toolbar. Wired to the same startRecognition() below.
+    if (type === 'claude') {
+      claudeMicFabEl = document.createElement('button');
+      claudeMicFabEl.className = 'claude-mic-fab';
+      claudeMicFabEl.type = 'button';
+      claudeMicFabEl.title = 'Voice input — speak instead of typing';
+      claudeMicFabEl.innerHTML =
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>';
+      bodyEl.appendChild(claudeMicFabEl);
+    }
+
     paneEl.appendChild(paneMainEl);
 
     // Per-pane input queue panel (hidden until user opens it via the ≡ button)
@@ -865,6 +881,10 @@
       if (!SR) {
         micBtn.disabled = true;
         micBtn.title = 'SpeechRecognition API not supported in this browser';
+        if (claudeMicFabEl) {
+          claudeMicFabEl.disabled = true;
+          claudeMicFabEl.title = 'SpeechRecognition API not supported in this browser';
+        }
       }
       let recognition = null;
       let voiceFinal  = '';
@@ -872,6 +892,7 @@
       function stopRecognition() {
         if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
         claudeToolbarEl.classList.remove('listening');
+        if (claudeMicFabEl) claudeMicFabEl.classList.remove('listening');
       }
       function closeVoice() {
         stopRecognition();
@@ -908,6 +929,7 @@
         try {
           recognition.start();
           claudeToolbarEl.classList.add('listening');
+          if (claudeMicFabEl) claudeMicFabEl.classList.add('listening');
           setTimeout(function() { voiceText.focus(); }, 80);
         } catch (e) {
           toast('Voice start failed: ' + e.message, 'error');
@@ -924,6 +946,7 @@
       }
 
       micBtn.addEventListener('click', startRecognition);
+      if (claudeMicFabEl) claudeMicFabEl.addEventListener('click', startRecognition);
       voiceSend.addEventListener('click', sendVoice);
       voiceCxl.addEventListener('click', closeVoice);
       voiceText.addEventListener('keydown', function(e) {

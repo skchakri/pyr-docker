@@ -46,6 +46,39 @@ class TerminalChannel < ApplicationCable::Channel
 
   private
 
+  # Split raw PTY bytes at a valid UTF-8 boundary. PTY chunks routinely cut
+  # multi-byte sequences (em-dashes / box-drawing start with 0xE2) in half,
+  # which makes ActionCable's JSON encoder raise UndefinedConversionError
+  # and kill the session. Returns [complete_utf8_to_broadcast, leftover_bytes].
+  def split_utf8_safe(bytes)
+    return [ "", "" ] if bytes.empty?
+    bin = bytes.dup.force_encoding(Encoding::ASCII_8BIT)
+    cut = bin.bytesize
+    i = cut - 1
+    steps = 0
+    while i >= 0 && steps < 4
+      b = bin.getbyte(i)
+      if b < 0x80
+        break
+      elsif (b & 0xC0) == 0x80
+        i -= 1
+        steps += 1
+      else
+        seq_len = if    (b & 0xE0) == 0xC0 then 2
+        elsif (b & 0xF0) == 0xE0 then 3
+        elsif (b & 0xF8) == 0xF0 then 4
+        else 1
+        end
+        cut = i if (bin.bytesize - i) < seq_len
+        break
+      end
+    end
+    complete = bin.byteslice(0, cut).force_encoding(Encoding::UTF_8).scrub
+    leftover = bin.byteslice(cut, bin.bytesize - cut) || ""
+    leftover.force_encoding(Encoding::ASCII_8BIT)
+    [ complete, leftover ]
+  end
+
   # Build "--model X --effort Y" from subscribe params, after whitelisting.
   # "default" (or anything unrecognized) means: don't pass that flag.
   def claude_flags
@@ -142,16 +175,20 @@ class TerminalChannel < ApplicationCable::Channel
 
         elapsed = Time.now - last_flush
         if !pending.empty? && (elapsed >= flush_interval || pending.bytesize >= max_pending)
-          out = pending.dup
+          out, leftover = split_utf8_safe(pending)
           pending.clear
-          PtySessionStore.append_buffer(@session_key, out)
-          ActionCable.server.broadcast(@stream_id, { output: out })
+          pending << leftover unless leftover.empty?
+          unless out.empty?
+            PtySessionStore.append_buffer(@session_key, out)
+            ActionCable.server.broadcast(@stream_id, { output: out })
+          end
           last_flush = Time.now
         end
       rescue EOFError, Errno::EIO, IOError
         unless pending.empty?
-          PtySessionStore.append_buffer(@session_key, pending)
-          ActionCable.server.broadcast(@stream_id, { output: pending })
+          final = pending.dup.force_encoding(Encoding::UTF_8).scrub
+          PtySessionStore.append_buffer(@session_key, final)
+          ActionCable.server.broadcast(@stream_id, { output: final })
         end
         ActionCable.server.broadcast(@stream_id, { output: "\r\n\e[90m[Process exited]\e[0m\r\n", exited: true })
         PtySessionStore.delete(@session_key)

@@ -3,6 +3,9 @@ ownsites:
   container_name: ownsites-web-1
   compose_dir: /home/kalyan/platform/skchakri/ownsites
   compose_service: web
+  # Start/stop/restart the whole compose project (web + vite + sidekiq + redis + nginx)
+  # so the nginx proxy on :8088 — the Access URL target — always comes up too.
+  compose_all: true
   port: "1700"
   host_path: /home/kalyan/platform/skchakri/ownsites
   database: ownsites_development
