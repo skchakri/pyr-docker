@@ -416,8 +416,13 @@
   }
 
   // ---- Render ----
-  function getStateBadge(state) {
-    if (state === 'running')    return '<span class="badge badge-running">Running</span>';
+  function getStateBadge(state, serving) {
+    if (state === 'running') {
+      // Container is up but its serving port isn't accepting connections — a front
+      // proxy is down or the app is still booting. Amber beats a misleading green.
+      if (serving === false) return '<span class="badge badge-starting" title="Container is up but not responding on its port yet">Starting…</span>';
+      return '<span class="badge badge-running">Running</span>';
+    }
     if (state === 'exited')     return '<span class="badge badge-exited">Exited</span>';
     if (state === 'restarting') return '<span class="badge badge-starting">Restarting</span>';
     if (state === 'created')    return '<span class="badge badge-starting">Created</span>';
@@ -559,7 +564,7 @@
       return '<div class="' + cardCls + '" draggable="true" data-client="' + c.name + '">' +
         '<div class="card-header">' +
           '<div class="card-title">' +
-            '<h3>' + c.name + '</h3>' + getStateBadge(c.state) +
+            '<h3>' + c.name + '</h3>' + getStateBadge(c.state, c.serving) +
           '</div>' +
           gearHtml +
         '</div>' +

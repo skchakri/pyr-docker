@@ -1,6 +1,8 @@
 require "yaml"
 require "shellwords"
 require "open3"
+require "socket"
+require "uri"
 
 class DockerService
   COMPOSE_DIR = Rails.root.join("..").to_s
@@ -16,13 +18,18 @@ class DockerService
       defs.map do |name, config|
         if config[:type] == "process"
           state, status = process_status(config[:port])
+          serving = (state == "running")
         else
           container = statuses[config[:container_name]]
           state  = container&.dig(:state)  || "not_found"
           status = container&.dig(:status) || "Not created"
+          # "Up" only means the container exists. For proxied apps (ownsites' web
+          # container can be up while its nginx on :8088 is down) that produces a
+          # misleading green dot, so probe the port the client actually serves on.
+          serving = state == "running" ? access_responding?(config) : false
         end
 
-        config.merge(state: state, status: status, branch: branches[name] || "")
+        config.merge(state: state, status: status, serving: serving, branch: branches[name] || "")
       end
     end
 
@@ -179,18 +186,55 @@ class DockerService
       end
     end
 
-    def git_branches(defs)
-      branches = {}
-      defs.each do |name, config|
-        path = config[:host_path]
-        next unless path && File.directory?(path)
+    # Is the client actually reachable on the port it serves? For clients with an
+    # explicit access_url (e.g. ownsites' nginx on :8088) we probe that port;
+    # otherwise the declared PORT. A bare TCP connect distinguishes "serving" from
+    # "container up but proxy/app dead" without coupling to any health endpoint.
+    def access_responding?(config)
+      port = probe_port(config)
+      return true if port.nil?
 
-        branch, _status = Open3.capture2("git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD")
-        branches[name] = branch.strip
-      rescue => e
-        Rails.logger.debug("Git branch failed for #{name}: #{e.message}")
+      port_open?("127.0.0.1", port)
+    end
+
+    def probe_port(config)
+      if config[:access_url].present?
+        URI.parse(config[:access_url]).port || config[:port]
+      else
+        config[:port]
       end
-      branches
+    rescue URI::InvalidURIError
+      config[:port]
+    end
+
+    def port_open?(host, port, timeout = 0.4)
+      return false unless port.to_i.positive?
+
+      Socket.tcp(host, port.to_i, connect_timeout: timeout, &:close)
+      true
+    rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ETIMEDOUT,
+           Errno::ENETUNREACH, Errno::EADDRNOTAVAIL, SocketError, IOError
+      false
+    end
+
+    # Cached briefly: branches change rarely, but resolving them forks a `git`
+    # process per client on every status poll. Rails.cache (MemoryStore in dev)
+    # collapses that to one sweep per few seconds, without the cross-request
+    # staleness that made class-level memoization of definitions a bug.
+    def git_branches(defs)
+      Rails.cache.fetch("dashboard:git_branches", expires_in: 3.seconds) do
+        branches = {}
+        defs.each do |name, config|
+          path = config[:host_path]
+          next unless path && File.directory?(path)
+
+          branch, _status = Open3.capture2("git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD")
+          branches[name] = branch.strip
+        rescue => e
+          Rails.logger.debug("Git branch failed for #{name}: #{e.message}")
+        end
+        branches
+      end
     end
 
     def client_definitions
@@ -239,22 +283,27 @@ class DockerService
       {}
     end
 
+    # Cached briefly (see git_branches): a single `docker ps` per few seconds is
+    # plenty for a status board and keeps fast poll intervals from shelling out
+    # on every tick. Status lags an action by at most the TTL.
     def container_statuses
-      output, _status = Open3.capture2(
-        "docker", "ps", "-a",
-        "--format", '{{.Names}}\t{{.Status}}\t{{.State}}'
-      )
+      Rails.cache.fetch("dashboard:container_statuses", expires_in: 3.seconds) do
+        output, _status = Open3.capture2(
+          "docker", "ps", "-a",
+          "--format", '{{.Names}}\t{{.Status}}\t{{.State}}'
+        )
 
-      containers = {}
-      output.strip.split("\n").each do |line|
-        next if line.empty?
-        parts = line.split("\t")
-        containers[parts[0]] = { status: parts[1], state: parts[2] }
+        containers = {}
+        output.strip.split("\n").each do |line|
+          next if line.empty?
+          parts = line.split("\t")
+          containers[parts[0]] = { status: parts[1], state: parts[2] }
+        end
+        containers
+      rescue => e
+        Rails.logger.error("Docker status failed: #{e.message}")
+        {}
       end
-      containers
-    rescue => e
-      Rails.logger.error("Docker status failed: #{e.message}")
-      {}
     end
 
     def run_compose(*args)

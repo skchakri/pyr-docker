@@ -3,12 +3,16 @@ x-common: &common
     context: .
     dockerfile: Dockerfile
   network_mode: host
-  volumes:
-    - /home/kalyan/platform/pyr:/opt/pyr
-    - bundle_cache:/usr/local/bundle
-    - ~/.ssh:/root/.ssh:ro
-    - ./pyr_override_config.yml:/opt/.pyr/config.yml:ro
-    - ./entrypoint.sh:/opt/pyr-docker/entrypoint.sh:ro
+  restart: unless-stopped
+  # NOTE: every PYR client re-declares `volumes:` in full below. YAML merge (`<<`)
+  # REPLACES a list, it does not deep-merge — so a shared volumes list here would
+  # be silently overridden and never used. Keep per-client volumes per-service.
+
+# Shared bits for the standalone host-networked apps (zevents, profvault, myjira,
+# planmytrip, quapt_agents). Each brings its own Dockerfile + volumes, so only the
+# safely-shareable keys live here.
+x-host-rails8: &host-rails8
+  network_mode: host
   restart: unless-stopped
 
 x-common-env: &common-env
@@ -130,11 +134,11 @@ services:
 
   # ==================== ZEVENTS (3007) ====================
   zevents:
+    <<: *host-rails8
     build:
       context: .
       dockerfile: Dockerfile.zevents
     container_name: pyr-zevents
-    network_mode: host
     working_dir: /opt/zevents
     volumes:
       - /home/kalyan/platform/clients/zevents:/opt/zevents
@@ -154,15 +158,14 @@ services:
       ZEVENTS_DB_NAME: zevents_development
       REDIS_URL: redis://127.0.0.1:6379/7
     command: /opt/pyr-docker/entrypoint-zevents.sh
-    restart: unless-stopped
 
   # ==================== PROFVAULT (1100) ====================
   profvault:
+    <<: *host-rails8
     build:
       context: .
       dockerfile: Dockerfile.profvault
     container_name: pyr-profvault
-    network_mode: host
     working_dir: /rails
     volumes:
       - /home/kalyan/platform/skchakri/prof_vault:/rails
@@ -178,15 +181,14 @@ services:
       DATABASE_USER: root
       DATABASE_PASSWORD: password
     command: /opt/pyr-docker/entrypoint-profvault.sh
-    restart: unless-stopped
 
   # ==================== MYJIRA (1200) ====================
   myjira:
+    <<: *host-rails8
     build:
       context: .
       dockerfile: Dockerfile.myjira
     container_name: pyr-myjira
-    network_mode: host
     working_dir: /rails
     volumes:
       - /home/kalyan/platform/skchakri/myjira:/rails
@@ -210,15 +212,14 @@ services:
       DATABASE_PASSWORD: password
       REDIS_URL: redis://127.0.0.1:6379/12
     command: /opt/pyr-docker/entrypoint-myjira.sh
-    restart: unless-stopped
 
   # ==================== PLAN MY TRIP (3010) ====================
   planmytrip:
+    <<: *host-rails8
     build:
       context: .
       dockerfile: Dockerfile.plan_my_trip
     container_name: pyr-planmytrip
-    network_mode: host
     working_dir: /rails
     volumes:
       - /home/kalyan/platform/skchakri/plan_my_trip:/rails
@@ -244,15 +245,14 @@ services:
       # Left blank → those services fall back to deterministic skeletons.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     command: /opt/pyr-docker/entrypoint-plan_my_trip.sh
-    restart: unless-stopped
 
   # ==================== QUAPT AGENTS (3030) ====================
   quapt_agents:
+    <<: *host-rails8
     build:
       context: .
       dockerfile: Dockerfile.quapt_agents
     container_name: pyr-quapt-agents
-    network_mode: host
     working_dir: /rails
     volumes:
       - /home/kalyan/platform/quapt/poc:/rails
@@ -271,9 +271,8 @@ services:
       REDIS_URL: redis://127.0.0.1:6379/14
       # Powers the Claude agentic loop (anthropic gem). Inherited from host env.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-7}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
     command: /opt/pyr-docker/entrypoint-quapt_agents.sh
-    restart: unless-stopped
 
 volumes:
   bundle_cache:
