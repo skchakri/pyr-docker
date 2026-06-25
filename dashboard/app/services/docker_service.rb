@@ -9,11 +9,18 @@ class DockerService
   COMPOSE_FILE = File.join(COMPOSE_DIR, "docker-compose.yml")
   EXTRA_CLIENTS_FILE = Rails.root.join("config", "extra_clients.yml").to_s
 
+  # Overall wall-clock budget for one concurrent port-probe sweep. Each probe is
+  # a bare TCP connect with a 0.4s timeout, run in its own thread; this caps the
+  # total wait so a sweep stays well under the controller's response budget no
+  # matter how many clients are running.
+  PORT_PROBE_BUDGET = 1.0
+
   class << self
     def clients
       defs = client_definitions
       statuses = container_statuses
       branches = git_branches(defs)
+      probes = port_probes(defs, statuses)
 
       defs.map do |name, config|
         if config[:type] == "process"
@@ -26,7 +33,8 @@ class DockerService
           # "Up" only means the container exists. For proxied apps (ownsites' web
           # container can be up while its nginx on :8088 is down) that produces a
           # misleading green dot, so probe the port the client actually serves on.
-          serving = state == "running" ? access_responding?(config) : false
+          # The probe runs in the cached, concurrent port_probes sweep below.
+          serving = state == "running" ? probes.fetch(name, false) : false
         end
 
         config.merge(state: state, status: status, serving: serving, branch: branches[name] || "")
@@ -304,6 +312,48 @@ class DockerService
         Rails.logger.error("Docker status failed: #{e.message}")
         {}
       end
+    end
+
+    # Cached, concurrent port-probe sweep (mirrors container_statuses/git_branches).
+    # For every running, non-`process` client we open a bare TCP connect to the
+    # port it actually serves on. Done inline + sequentially in #clients this cost
+    # ~0.4s per running client, so a dozen clients blocked the Puma thread for
+    # several seconds on every 8s poll. Here each probe runs in its own thread and
+    # the whole sweep is bounded by a single monotonic deadline, so a cold sweep
+    # costs ~one connect-timeout instead of N of them; the 3s TTL means warm polls
+    # return instantly. Returns a hash keyed per client name => "is it serving".
+    def port_probes(defs, statuses)
+      Rails.cache.fetch("dashboard:port_probes", expires_in: 3.seconds) do
+        threads = defs.filter_map do |name, config|
+          next if config[:type] == "process"
+          next unless statuses[config[:container_name]]&.dig(:state) == "running"
+
+          [ name, Thread.new { probe_serving(config) } ]
+        end
+
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + PORT_PROBE_BUDGET
+        threads.each_with_object({}) do |(name, thread), results|
+          remaining = [ deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0 ].max
+          # A probe that outlives the budget is recorded as "not serving" rather
+          # than stalling the sweep; its thread self-terminates within one
+          # connect-timeout, so there's nothing to kill.
+          results[name] = thread.join(remaining) ? thread.value : false
+        end
+      rescue => e
+        Rails.logger.error("Port probe sweep failed: #{e.message}")
+        {}
+      end
+    end
+
+    # Probe one client in a worker thread. access_responding? is already fully
+    # guarded (probe_port/port_open? rescue their own errors), but we belt-and-
+    # suspenders here so an unexpected failure resolves to "not serving" instead
+    # of tearing down the whole sweep when join later calls thread.value.
+    def probe_serving(config)
+      access_responding?(config)
+    rescue => e
+      Rails.logger.debug("Port probe failed for #{config[:name]}: #{e.message}")
+      false
     end
 
     def run_compose(*args)
