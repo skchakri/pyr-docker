@@ -59,7 +59,11 @@ body {
 .header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
 .header h1 span { color: var(--text-muted); font-weight: 400; }
 
-.header-actions { display: flex; gap: 10px; align-items: center; }
+.header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Bulk lifecycle controls (Start all / Restart all / Stop all) */
+.bulk-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.bulk-actions .bulk-label { white-space: nowrap; }
 
 .status-summary { display: flex; gap: 16px; margin-right: 16px; font-size: 13px; }
 .status-summary .stat { display: flex; align-items: center; gap: 6px; }
