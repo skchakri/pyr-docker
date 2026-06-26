@@ -1,0 +1,50 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - img "PYR Docker" [ref=e4]
+      - heading "Dashboard / Docker Clients" [level=1] [ref=e5]
+    - generic "Click to refresh · fetched 10:10:36 PM" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]: Session
+          - generic [ref=e10]: resets 1h 49m
+        - generic [ref=e12]: 12% used
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: Weekly · all models
+          - generic [ref=e16]: resets Wed 2:00 AM
+        - generic [ref=e18]: 32% used
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: Weekly · Sonnet
+          - generic [ref=e22]: resets Wed 2:00 AM
+        - generic [ref=e24]: 12% used
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - generic "Skills" [ref=e27] [cursor=pointer]:
+          - img [ref=e28]
+          - generic [ref=e30]: "14"
+          - text: skills
+        - generic "Plugins & Agents" [ref=e31] [cursor=pointer]:
+          - img [ref=e32]
+          - generic [ref=e37]: "7"
+          - text: plugins
+        - generic "MCP Servers" [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+          - generic [ref=e42]: "7"
+          - text: mcp
+      - generic [ref=e43]:
+        - button "Start all" [ref=e44] [cursor=pointer]:
+          - img [ref=e45]
+          - generic [ref=e47]: Start all
+        - button "Restart all" [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+          - generic [ref=e53]: Restart all
+        - button "Stop all" [ref=e54] [cursor=pointer]:
+          - img [ref=e55]
+          - generic [ref=e57]: Stop all
+      - button "Refresh" [ref=e58] [cursor=pointer]:
+        - img [ref=e59]
+        - text: Refresh
+  - main [ref=e63]:
+    - generic [ref=e64]: Loading clients...
