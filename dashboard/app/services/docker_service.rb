@@ -19,7 +19,7 @@ class DockerService
     def clients
       defs = client_definitions
       statuses = container_statuses
-      branches = git_branches(defs)
+      git_info = git_status(defs)
       probes = port_probes(defs, statuses)
 
       defs.map do |name, config|
@@ -37,7 +37,12 @@ class DockerService
           serving = state == "running" ? probes.fetch(name, false) : false
         end
 
-        config.merge(state: state, status: status, serving: serving, branch: branches[name] || "")
+        config.merge(
+          state: state, status: status, serving: serving,
+          branch: git_info.dig(name, :branch) || "",
+          git_dirty: git_info.dig(name, :dirty) || false,
+          git_changes: git_info.dig(name, :changed_files) || 0
+        )
       end
     end
 
@@ -225,23 +230,31 @@ class DockerService
       false
     end
 
-    # Cached briefly: branches change rarely, but resolving them forks a `git`
-    # process per client on every status poll. Rails.cache (MemoryStore in dev)
-    # collapses that to one sweep per few seconds, without the cross-request
-    # staleness that made class-level memoization of definitions a bug.
-    def git_branches(defs)
-      Rails.cache.fetch("dashboard:git_branches", expires_in: 3.seconds) do
-        branches = {}
+    # Cached briefly: branch + working-tree dirtiness change rarely, but resolving
+    # them forks a `git` per client on every status poll. Rails.cache (MemoryStore
+    # in dev) collapses that to one sweep per few seconds, without the cross-request
+    # staleness that made class-level memoization of definitions a bug. Both forks
+    # live inside this one cached sweep, so the dirty flag adds no extra poll.
+    def git_status(defs)
+      Rails.cache.fetch("dashboard:git_status", expires_in: 3.seconds) do
+        info = {}
         defs.each do |name, config|
           path = config[:host_path]
           next unless path && File.directory?(path)
 
-          branch, _status = Open3.capture2("git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD")
-          branches[name] = branch.strip
+          # rev-parse --abbrev-ref is robust on detached HEAD (yields "HEAD") and
+          # avoids fragile `--branch` header parsing. status --porcelain counts
+          # every change including untracked (`??`) — what a solo dev wants to see
+          # before switching branches.
+          branch, _bst = Open3.capture2("git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD")
+          porcelain, _sst = Open3.capture2("git", "-C", path, "status", "--porcelain")
+          changed = porcelain.lines.count
+          info[name] = { branch: branch.strip, dirty: changed.positive?, changed_files: changed }
         rescue => e
-          Rails.logger.debug("Git branch failed for #{name}: #{e.message}")
+          Rails.logger.debug("Git status failed for #{name}: #{e.message}")
+          info[name] = { branch: "", dirty: false, changed_files: 0 }
         end
-        branches
+        info
       end
     end
 
@@ -291,7 +304,7 @@ class DockerService
       {}
     end
 
-    # Cached briefly (see git_branches): a single `docker ps` per few seconds is
+    # Cached briefly (see git_status): a single `docker ps` per few seconds is
     # plenty for a status board and keeps fast poll intervals from shelling out
     # on every tick. Status lags an action by at most the TTL.
     def container_statuses
@@ -314,7 +327,7 @@ class DockerService
       end
     end
 
-    # Cached, concurrent port-probe sweep (mirrors container_statuses/git_branches).
+    # Cached, concurrent port-probe sweep (mirrors container_statuses/git_status).
     # For every running, non-`process` client we open a bare TCP connect to the
     # port it actually serves on. Done inline + sequentially in #clients this cost
     # ~0.4s per running client, so a dozen clients blocked the Puma thread for

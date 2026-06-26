@@ -225,6 +225,9 @@ body {
 }
 
 .card-branch .icon { width: 13px; height: 13px; flex-shrink: 0; }
+/* Branch name truncates with an ellipsis so the dirty dot is never clipped off the pill. */
+.card-branch .branch-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.card-branch .branch-dirty { color: #f59e0b; margin-left: 2px; font-size: 11px; line-height: 1; cursor: default; flex-shrink: 0; }
 
 .card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .icon { width: 14px; height: 14px; flex-shrink: 0; }
