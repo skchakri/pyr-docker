@@ -274,6 +274,43 @@ services:
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
     command: /opt/pyr-docker/entrypoint-quapt_agents.sh
 
+  # ==================== BRANDREEL (3040) ====================
+  # Next.js 16 + Remotion 4 video studio. Not a Rails app — runs `npm run dev`
+  # with the source bind-mounted and node_modules in a named volume (container
+  # builds its own arch-correct native binaries). Remotion renders MP4s in-
+  # container via a headless Chromium baked by the entrypoint.
+  brand_reel:
+    <<: *host-rails8
+    build:
+      context: .
+      dockerfile: Dockerfile.brand_reel
+    container_name: pyr-brand-reel
+    working_dir: /app
+    volumes:
+      - /home/kalyan/platform/skchakri/brand_reel:/app
+      - brand_reel_node_modules:/app/node_modules
+      - ~/.ssh:/root/.ssh:ro
+      - ./entrypoint-brand_reel.sh:/opt/pyr-docker/entrypoint-brand_reel.sh:ro
+    environment:
+      NODE_ENV: development
+      PORT: "3040"
+      # Project JSON, rendered MP4s, uploads, and cached stock are written under
+      # the bind-mounted repo so they persist on the host (defaults already point
+      # at ./data, ./renders, ./public/uploads, ./cache/stock — set explicitly
+      # for clarity).
+      DATA_DIR: /app/data/projects
+      RENDER_DIR: /app/renders
+      UPLOAD_DIR: /app/public/uploads
+      STOCK_CACHE_DIR: /app/cache/stock
+      # Provider keys — env-gated capabilities. Missing keys leave the feature
+      # disabled with a UI explainer rather than breaking (see registry.ts).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      PEXELS_API_KEY: ${PEXELS_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      FAL_KEY: ${FAL_KEY:-}
+    command: /opt/pyr-docker/entrypoint-brand_reel.sh
+
 volumes:
   bundle_cache:
   quapt_agents_bundle_cache:
@@ -284,3 +321,4 @@ volumes:
   myjira_bundle_cache:
   myjira_playwright_cache:
   planmytrip_bundle_cache:
+  brand_reel_node_modules:
