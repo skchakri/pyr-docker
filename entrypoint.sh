@@ -4,7 +4,23 @@ set -e
 # Git config for GitHub access
 git config --global --replace-all url.'git@github.com:'.insteadOf 'https://github.com/'
 git config --global --add url.'git@github.com:'.insteadOf 'git://github.com/'
-export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no'
+
+# The host ~/.ssh is mounted read-only and owned by the host user (uid 1000);
+# in-container ssh runs as root and rejects it with "Bad owner or permissions on
+# /root/.ssh/config", which breaks git-over-ssh gem fetches (e.g. datetimepicker).
+# Copy the keys into a root-owned dir with correct perms and bypass the host's
+# ssh config (it only defines an unrelated 'gateway' host).
+mkdir -p /root/.ssh_container
+cp -f /root/.ssh/id_* /root/.ssh_container/ 2>/dev/null || true
+chown -R root:root /root/.ssh_container
+chmod 700 /root/.ssh_container
+chmod 600 /root/.ssh_container/* 2>/dev/null || true
+chmod 644 /root/.ssh_container/*.pub 2>/dev/null || true
+SSH_KEY_OPTS=""
+for k in /root/.ssh_container/id_ed25519 /root/.ssh_container/id_rsa; do
+  [ -f "$k" ] && SSH_KEY_OPTS="$SSH_KEY_OPTS -i $k"
+done
+export GIT_SSH_COMMAND="ssh -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes $SSH_KEY_OPTS"
 
 # Clean up stale pid
 rm -f tmp/pids/server.pid
