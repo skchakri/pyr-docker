@@ -46,6 +46,7 @@ services:
     environment:
       <<: *common-env
       CLIENT: stampinup
+      BUNDLE_GEMFILE: /opt/pyr/clients/stampinup/Gemfile
       PORT: "3003"
       DATABASE_NAME: pyr_stampinup_dev
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_stampinup_development?authSource=admin
@@ -66,6 +67,7 @@ services:
     environment:
       <<: *common-env
       CLIENT: partylite
+      BUNDLE_GEMFILE: /opt/pyr/clients/partylite/Gemfile
       PORT: "3005"
       DATABASE_NAME: pyr_partylite_dev
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_partylite_development?authSource=admin
@@ -86,6 +88,7 @@ services:
     environment:
       <<: *common-env
       CLIENT: avon
+      BUNDLE_GEMFILE: /opt/pyr/clients/avon/Gemfile
       PORT: "3001"
       DATABASE_NAME: pyr_avon_dev
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_avon_development?authSource=admin
@@ -106,6 +109,7 @@ services:
     environment:
       <<: *common-env
       CLIENT: naturessunshine
+      BUNDLE_GEMFILE: /opt/pyr/clients/naturessunshine/Gemfile
       PORT: "3002"
       DATABASE_NAME: pyr_naturessunshine_dev
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_naturessunshine_development?authSource=admin
@@ -126,6 +130,7 @@ services:
     environment:
       <<: *common-env
       CLIENT: monat
+      BUNDLE_GEMFILE: /opt/pyr/clients/monat/Gemfile
       PORT: "3004"
       DATABASE_NAME: pyr_monat_dev
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_monat_development?authSource=admin
@@ -212,6 +217,36 @@ services:
       DATABASE_PASSWORD: password
       REDIS_URL: redis://127.0.0.1:6379/12
     command: /opt/pyr-docker/entrypoint-myjira.sh
+
+  # ==================== HEARTH (1400) ====================
+  # Family app (Rails 8.1, Ruby 3.3.6, Postgres + Redis from dev_datastack).
+  # Runs web + Solid Queue jobs; bound to 0.0.0.0 so the Android app on the
+  # home Wi-Fi can reach it at http://192.168.86.23:1400.
+  hearth:
+    <<: *host-rails8
+    build:
+      context: .
+      dockerfile: Dockerfile.hearth
+    container_name: pyr-hearth
+    working_dir: /rails
+    volumes:
+      - /home/kalyan/platform/skchakri/hearth:/rails
+      - hearth_bundle_cache:/usr/local/bundle
+      - ./entrypoint-hearth.sh:/opt/pyr-docker/entrypoint-hearth.sh:ro
+    environment:
+      RAILS_ENV: development
+      PORT: "1400"
+      # The public hostname behind the Cloudflare Tunnel. Every link in an
+      # invitation or password-reset email points here; without it they point
+      # at localhost and reach nobody.
+      APP_HOST: trywanderply.com
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      REDIS_URL: redis://127.0.0.1:6379/2
+      DATABASE_NAME: hearth_development
+    command: /opt/pyr-docker/entrypoint-hearth.sh
 
   # ==================== PLAN MY TRIP (3010) ====================
   planmytrip:
@@ -320,5 +355,6 @@ volumes:
   profvault_jobspy_venv:
   myjira_bundle_cache:
   myjira_playwright_cache:
+  hearth_bundle_cache:
   planmytrip_bundle_cache:
   brand_reel_node_modules:
