@@ -1,0 +1,24 @@
+# Dev-only logins used by the dashboard's "User" / "Admin" access buttons
+# (GET /api/clients/:name/dev_login?role=user|admin).
+#
+# `default` applies to any client without its own entry. A client gets an
+# Admin button only when it has an `admin` entry. `path` is where the browser
+# lands after signing in (default "/").
+#
+# Admin sessions are opened on 127.0.0.1 and user sessions on localhost, so both
+# can be logged in at once (cookies are per host). That matters for Avon, which
+# hides logout.
+
+default:
+  user:
+    login: kevin.mcevoy
+    password: password1
+
+avon:
+  user:
+    login: "02857271"
+    password: password1
+  admin:
+    login: "01968029"   # user 1566, security group 7 = super_admin
+    password: password1
+    # No `path`: pyr has no separate /admin area (and /admin is a honeypot route).

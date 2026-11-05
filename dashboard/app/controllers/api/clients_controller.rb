@@ -49,6 +49,12 @@ module Api
         return render json: { error: "Unknown client" }, status: :not_found
       end
 
+      role = params[:role].presence || "user"
+      creds = DockerService.dev_login(name, role)
+      unless creds
+        return render plain: "No #{role} login configured for #{name} (config/dev_logins.yml)", status: :not_found
+      end
+
       port = DockerService.client_port(name)
       uri = URI("http://localhost:#{port}/users/sign_in")
 
@@ -59,16 +65,18 @@ module Api
       # POST with JSON content type to bypass CSRF (verified_request? returns true for JSON)
       req = Net::HTTP::Post.new(uri.path)
       req["Content-Type"] = "application/json"
-      req.body = { user: { login: "kevin.mcevoy", password: "password1" } }.to_json
+      req.body = { user: { login: creds[:login], password: creds[:password] } }.to_json
 
       res = http.request(req)
 
-      # Forward session cookies from the client to the browser
-      (res.get_fields("set-cookie") || []).each do |cookie_header|
-        response.headers["Set-Cookie"] = cookie_header
-      end
+      # Forward every session cookie to the browser. Cookies are scoped by host,
+      # not port, so they land on whichever host the browser used for the dashboard
+      # (localhost or 127.0.0.1); the redirect stays on that same host.
+      client_cookies = res.get_fields("set-cookie") || []
+      response.headers["Set-Cookie"] = client_cookies if client_cookies.any?
 
-      redirect_to "http://localhost:#{port}/", allow_other_host: true
+      host = request.host == "127.0.0.1" ? "127.0.0.1" : "localhost"
+      redirect_to "http://#{host}:#{port}#{creds[:path].presence || '/'}", allow_other_host: true
     rescue Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
       render plain: "Cannot connect to #{name} on port #{port}: #{e.message}", status: :bad_gateway
     end

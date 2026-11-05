@@ -8,6 +8,7 @@ class DockerService
   COMPOSE_DIR = Rails.root.join("..").to_s
   COMPOSE_FILE = File.join(COMPOSE_DIR, "docker-compose.yml")
   EXTRA_CLIENTS_FILE = Rails.root.join("config", "extra_clients.yml").to_s
+  DEV_LOGINS_FILE = Rails.root.join("config", "dev_logins.yml").to_s
 
   # Overall wall-clock budget for one concurrent port-probe sweep. Each probe is
   # a bare TCP connect with a 0.4s timeout, run in its own thread; this caps the
@@ -39,6 +40,7 @@ class DockerService
 
         config.merge(
           state: state, status: status, serving: serving,
+          admin_login: dev_login(name, "admin").present?,
           branch: git_info.dig(name, :branch) || "",
           git_dirty: git_info.dig(name, :dirty) || false,
           git_changes: git_info.dig(name, :changed_files) || 0
@@ -169,6 +171,14 @@ class DockerService
       client_definitions.dig(name, :port) || "3000"
     end
 
+    # Dev login for a client + role ("user"/"admin") from config/dev_logins.yml.
+    # Falls back to the `default` entry; nil when nothing is configured.
+    def dev_login(name, role)
+      logins = dev_logins
+      entry = logins.dig(name.to_s, role.to_s) || logins.dig("default", role.to_s)
+      entry&.transform_keys(&:to_sym)
+    end
+
     def compose_dir_for(name)
       client_definitions.dig(name, :compose_dir) || COMPOSE_DIR
     end
@@ -292,6 +302,15 @@ class DockerService
       end
 
       clients
+    end
+
+    def dev_logins
+      return {} unless File.exist?(DEV_LOGINS_FILE)
+
+      YAML.safe_load(File.read(DEV_LOGINS_FILE)) || {}
+    rescue => e
+      Rails.logger.error("Failed to load dev_logins.yml: #{e.message}")
+      {}
     end
 
     def extra_client_definitions

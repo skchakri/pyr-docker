@@ -528,6 +528,11 @@
     return '<span class="badge badge-notfound">Not Found</span>';
   }
 
+  // Dashboard origin on a specific host (keeps the current port).
+  function dashOrigin(host) {
+    return window.location.protocol + '//' + host + (window.location.port ? ':' + window.location.port : '');
+  }
+
   // Action button definitions — order here is the default for unused actions.
   // Sorted at render time by per-client click frequency (most-used first).
   function buildActions(c, isRunning) {
@@ -537,8 +542,10 @@
 
     const actions = [
       { key: 'access', html:
-        '<a class="btn btn-sm btn-accent" href="' + (c.access_url || ('/api/clients/' + c.name + '/dev_login')) + '" target="_blank" onclick="bumpAction(\'' + c.name + '\',\'access\')" ' + accessStyle + '>' +
-          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> Access</a>'
+        // User session lives on localhost, admin on 127.0.0.1 — separate cookie
+        // jars, so both can be signed in at once (Avon hides logout).
+        '<a class="btn btn-sm btn-accent" href="' + (c.access_url || (dashOrigin('localhost') + '/api/clients/' + c.name + '/dev_login?role=user')) + '" target="_blank" onclick="bumpAction(\'' + c.name + '\',\'access\')" ' + accessStyle + ' title="Sign in as the dev user">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> ' + (c.admin_login ? 'User' : 'Access') + '</a>'
       },
       { key: 'console', html:
         '<button class="btn btn-sm" ' + term('console') + ' ' + disabledAttr + ' title="Rails Console">' +
@@ -569,6 +576,13 @@
           '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2h6v6l5 10a2 2 0 0 1-1.8 2.9H5.8A2 2 0 0 1 4 18l5-10V2z"></path><line x1="9" y1="2" x2="15" y2="2"></line></svg> Tests</a>'
       }
     ];
+
+    if (c.admin_login && !c.access_url) {
+      actions.splice(1, 0, { key: 'admin', html:
+        '<a class="btn btn-sm btn-accent" href="' + dashOrigin('127.0.0.1') + '/api/clients/' + c.name + '/dev_login?role=admin" target="_blank" onclick="bumpAction(\'' + c.name + '\',\'admin\')" ' + accessStyle + ' title="Sign in as the dev admin (opens on 127.0.0.1)">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Admin</a>'
+      });
+    }
 
     if (c.vite_service) {
       actions.push({ key: 'vite', html:
