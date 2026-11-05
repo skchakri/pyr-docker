@@ -28,13 +28,17 @@ rm -f tmp/pids/server.pid
 # Temporarily comment out yanked gem (meta_request 0.3.3 removed from rubygems)
 sed -i "s/^  gem 'meta_request'/#  gem 'meta_request'/" /opt/pyr/common_pyr_dependencies.rb
 
-# Uncomment auth_source in mongoid.yml development section (line 37)
-sed -i '37s/# //' /opt/pyr/config/mongoid.yml
+# Ensure auth_source is set in the mongoid.yml development section (branch
+# layouts differ, so match the dev user/password block by pattern, never by
+# line number). The trailing marker comment lets cleanup remove exactly this line.
+if ! grep -q 'pyr-docker-dev-auth' /opt/pyr/config/mongoid.yml; then
+  sed -i '0,/^        password: <%= APP_CONFIG\[:mongodb_password\] %>$/s//&\n        auth_source: <%= APP_CONFIG[:mongodb_auth_source].presence || "admin" %> # pyr-docker-dev-auth/' /opt/pyr/config/mongoid.yml
+fi
 
 # Restore files on exit
 cleanup() {
   sed -i "s/^#  gem 'meta_request'/  gem 'meta_request'/" /opt/pyr/common_pyr_dependencies.rb
-  sed -i '37s/^        auth_source/        # auth_source/' /opt/pyr/config/mongoid.yml
+  sed -i '/# pyr-docker-dev-auth/d' /opt/pyr/config/mongoid.yml
 }
 trap cleanup EXIT
 

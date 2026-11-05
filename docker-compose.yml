@@ -93,6 +93,7 @@ services:
       DATABASE_NAME: pyr_avon_dev
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_avon_development?authSource=admin
       REDIS_URL: redis://127.0.0.1:6379/2
+      AI_SERVICE_TOKEN: ${AVON_AI_SERVICE_TOKEN:-}
     command: *common-command
 
   # ==================== NATURESSUNSHINE (3002) ====================
@@ -111,7 +112,7 @@ services:
       CLIENT: naturessunshine
       BUNDLE_GEMFILE: /opt/pyr/clients/naturessunshine/Gemfile
       PORT: "3002"
-      DATABASE_NAME: pyr_naturessunshine_dev
+      DATABASE_NAME: pyr_naturessunshine_tst
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_naturessunshine_development?authSource=admin
       REDIS_URL: redis://127.0.0.1:6379/3
     command: *common-command
@@ -239,7 +240,7 @@ services:
       # The public hostname behind the Cloudflare Tunnel. Every link in an
       # invitation or password-reset email points here; without it they point
       # at localhost and reach nobody.
-      APP_HOST: trywanderply.com
+      APP_HOST: homeroom.ink
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"
       DB_USERNAME: root

@@ -1,4 +1,17 @@
 development:
+  # Honour the container's DATABASE_NAME (compose sets each client's pyr_<client>_dev, so this is a no-op
+  # unless you point a container at another DB, e.g. a TST rep import -- see pyr/scripts/tst_rep_transfer).
+  database_name: <%= ENV['DATABASE_NAME'].presence %>
   rules_event_processing_strategy: redis
   rails_cache_uri: redis://127.0.0.1:6379/0
   mongodb_auth_source: admin
+  mongodb_user: root
+  mongodb_password: password
+  # Each client's container serves on its own PORT (avon 3001, monat 3004, ...); links and images built
+  # with PyrCore::CommonUtils.server_url use it (needs development_server_url support in core).
+  development_server_url: http://localhost:<%= ENV['PORT'].presence || 3000 %>
+
+test:
+  mongodb_auth_source: admin
+  mongodb_user: root
+  mongodb_password: password

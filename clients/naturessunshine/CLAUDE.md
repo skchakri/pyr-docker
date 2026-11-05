@@ -7,7 +7,7 @@
 | **Docker port** | 3002 |
 | **Container** | pyr-naturessunshine |
 | **Redis DB** | 3 |
-| **MySQL DB** | pyr_naturessunshine_dev |
+| **MySQL DB** | pyr_naturessunshine_tst |
 | **MongoDB** | pyr_naturessunshine_development |
 | **Company code** | naturessunshine |
 
