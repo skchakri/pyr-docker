@@ -1,0 +1,9 @@
+<svg width="560" height="140" viewBox="0 0 560 140" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Brandreel">
+  <g transform="scale(4.375)">
+    <rect x="6" y="2" width="20" height="28" rx="6" fill="#C6F432"/>
+    <path d="M13.6 8v7l5.8-3.5L13.6 8Z" fill="#0A0A0B"/>
+    <rect x="9.5" y="19" width="13" height="3.2" rx="1.6" fill="#0A0A0B"/>
+    <rect x="9.5" y="24" width="8" height="2" rx="1" fill="#0A0A0B" fill-opacity="0.55"/>
+  </g>
+  <text x="150" y="92" fill="#F4F4F5" font-family="'Space Grotesk', 'Helvetica Neue', Arial, sans-serif" font-size="66" font-weight="600" letter-spacing="-1.5">Brandreel</text>
+</svg>

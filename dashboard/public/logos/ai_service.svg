@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="aurora" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#4338CA"/>
+      <stop offset="0.38" stop-color="#7C3AED"/>
+      <stop offset="0.72" stop-color="#C026D3"/>
+      <stop offset="1" stop-color="#F472B6"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.22" cy="0.12" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FCE7F3"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="132" fill="url(#aurora)"/>
+  <rect x="16" y="16" width="480" height="480" rx="132" fill="url(#sheen)"/>
+  <rect x="17.5" y="17.5" width="477" height="477" rx="130.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3"/>
+  <rect x="104" y="300" width="64" height="112" rx="32" fill="#FFFFFF" fill-opacity="0.72"/>
+  <rect x="196" y="236" width="64" height="176" rx="32" fill="#FFFFFF" fill-opacity="0.88"/>
+  <path d="M352 92 C362 162 388 188 458 198 C388 208 362 234 352 304 C342 234 316 208 246 198 C316 188 342 162 352 92 Z" fill="url(#spark)"/>
+  <path d="M410 330 C414 356 424 366 450 370 C424 374 414 384 410 410 C406 384 396 374 370 370 C396 366 406 356 410 330 Z" fill="#FDE68A"/>
+</svg>

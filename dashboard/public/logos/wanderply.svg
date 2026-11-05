@@ -1,0 +1,27 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wanderply">
+  <defs>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="55%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Amber squircle -->
+  <rect width="512" height="512" rx="120" fill="url(#amber)"/>
+
+  <!-- Map pin punched out of the amber (evenodd hole reads as the locator dot) -->
+  <path fill="#0a0e1a" fill-rule="evenodd" d="
+    M256 116
+    C320 116 372 168 372 232
+    C372 304 286 380 262 402
+    C258 406 254 406 250 402
+    C226 380 140 304 140 232
+    C140 168 192 116 256 116
+    Z
+    M210 224
+    a46 46 0 1 0 92 0
+    a46 46 0 1 0 -92 0
+    Z
+  "/>
+</svg>

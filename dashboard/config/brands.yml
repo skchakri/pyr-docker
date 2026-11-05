@@ -1,0 +1,19 @@
+# Per-app card branding: logo (under public/logos/), card colours, and whether
+# the logo is a bare mark (wordmark: false) that still needs the name beside it.
+# logo_h: logo height in px when the default (24px) reads too big/small.
+# tone: light|dark picks status colours that stay readable on that background.
+avon:            { logo: avon.svg,            wordmark: true,  tone: light, bg: "#ffffff", fg: "#1a1a1a", accent: "#e4007c", logo_h: 20 }
+stampinup:       { logo: stampinup.png,       wordmark: true,  tone: light, bg: "#fff8f6", fg: "#3a2522", accent: "#f17259", logo_h: 30 }
+partylite:       { logo: partylite.svg,       wordmark: true,  tone: light, bg: "#f4f7fb", fg: "#122b46", accent: "#122b46", logo_h: 30 }
+naturessunshine: { logo: naturessunshine.png, wordmark: true,  tone: light, bg: "#fafafa", fg: "#404242", accent: "#39a38b", logo_h: 24 }
+monat:           { logo: monat.svg,           wordmark: true,  tone: dark,  bg: "#101010", fg: "#f4f2f1", accent: "#f4f2f1", logo_h: 15 }
+zevents:         { logo: zevents.svg,         wordmark: true,  tone: dark,  bg: "#141414", fg: "#ffffff", accent: "#ffffff" }
+profvault:       { logo: profvault.svg,       wordmark: false, tone: light, bg: "#ffffff", fg: "#2a2a2a", accent: "#e86b5d" }
+myjira:          { logo: myjira.svg,          wordmark: false, tone: light, bg: "#ffffff", fg: "#1e1b3a", accent: "#6d4aed" }
+homeroom:        { logo: homeroom.svg,        wordmark: true,  tone: light, bg: "#fbf7ee", fg: "#2a231d", accent: "#0f8fc7" }
+wanderply:       { logo: wanderply.svg,       wordmark: false, tone: dark,  bg: "#0a0e1a", fg: "#f5f3ea", accent: "#fbbf24" }
+brand_reel:      { logo: brand_reel.svg,      wordmark: true,  tone: dark,  bg: "#0a0a0b", fg: "#f4f4f5", accent: "#c6f432", logo_h: 26 }
+ownsites:        { logo: ownsites.svg,        wordmark: true,  tone: dark,  bg: "#0a0a0a", fg: "#e0e0e0", accent: "#00ff87" }
+stl_generator:   { logo: stl_generator.svg,   wordmark: false, tone: dark,  bg: "#0f0a1c", fg: "#ede6ff", accent: "#47bfff" }
+ai_service:      { logo: ai_service.svg,      wordmark: false, tone: light, bg: "#fdf4fb", fg: "#3b0a3f", accent: "#c026d3" }
+dashboard:       { logo: dashboard.svg,       wordmark: true,  tone: dark,  bg: "#0d1b2a", fg: "#e6f1fb", accent: "#4fc3f7" }

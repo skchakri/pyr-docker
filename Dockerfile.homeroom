@@ -1,0 +1,30 @@
+FROM ruby:3.3.6-slim
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+
+# poppler-utils: pdftotext, used by Homeroom's school menu sync.
+# libvips: image_processing. libpq: pg.
+# chromium: headless browser for the Skyward missing-work check (Ferrum).
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+    build-essential \
+    chromium \
+    fonts-liberation \
+    curl \
+    git \
+    libpq-dev \
+    libyaml-dev \
+    libvips \
+    pkg-config \
+    poppler-utils \
+    postgresql-client \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN gem install bundler -v 2.7.2
+
+WORKDIR /rails
+
+EXPOSE 1400
+
+CMD ["bash"]

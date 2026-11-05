@@ -9,6 +9,9 @@ class DockerService
   COMPOSE_FILE = File.join(COMPOSE_DIR, "docker-compose.yml")
   EXTRA_CLIENTS_FILE = Rails.root.join("config", "extra_clients.yml").to_s
   DEV_LOGINS_FILE = Rails.root.join("config", "dev_logins.yml").to_s
+  BRANDS_FILE = Rails.root.join("config", "brands.yml").to_s
+  # Compose services kept runnable locally (pyr.sh) but not shown on the dashboard.
+  HIDDEN_CLIENTS = %w[partylite].freeze
 
   # Overall wall-clock budget for one concurrent port-probe sweep. Each probe is
   # a bare TCP connect with a 0.4s timeout, run in its own thread; this caps the
@@ -39,6 +42,8 @@ class DockerService
         end
 
         config.merge(
+          group: client_group(config),
+          brand: brands[name],
           state: state, status: status, serving: serving,
           admin_login: dev_login(name, "admin").present?,
           branch: git_info.dig(name, :branch) || "",
@@ -57,7 +62,14 @@ class DockerService
         run_compose_in(config[:compose_dir], "up", "-d", *compose_target_args(config))
       when "process"
         pid_file = "/tmp/dashboard_#{name}.pid"
-        cmd = "cd #{Shellwords.escape(config[:host_path])} && #{config[:start_cmd]} & echo $! > #{pid_file}"
+        # Clear any previous run's process group first: when foreman dies on its own
+        # (e.g. one Procfile entry exits) it can orphan children like vite's node,
+        # which then hold the port and break the next start.
+        Open3.capture3("bash", "-c", "kill -TERM -- -$(cat #{pid_file}) 2>/dev/null; sleep 1") if File.exist?(pid_file)
+        # setsid runs the app in its own session (pgid == $!) so stop can kill the
+        # whole tree; std fds go to /dev/null so this request returns immediately.
+        cmd = "cd #{Shellwords.escape(config[:host_path])} && " \
+              "{ setsid bash -c #{Shellwords.escape(config[:start_cmd])} </dev/null >/dev/null 2>&1 & echo $! > #{pid_file}; }"
         stdout, stderr, st = Open3.capture3("bash", "-c", cmd)
         { success: st.success?, output: (stdout + stderr).strip }
       else
@@ -76,7 +88,7 @@ class DockerService
         pid_file = "/tmp/dashboard_#{name}.pid"
         if File.exist?(pid_file)
           pid = File.read(pid_file).strip
-          stdout, stderr, st = Open3.capture3("bash", "-c", "kill #{pid} 2>/dev/null; rm -f #{pid_file}")
+          stdout, stderr, st = Open3.capture3("bash", "-c", "kill -TERM -- -#{pid} 2>/dev/null || kill #{pid} 2>/dev/null; rm -f #{pid_file}")
           { success: st.success?, output: (stdout + stderr).strip }
         else
           # Try killing by port
@@ -134,7 +146,7 @@ class DockerService
         )
         (stdout + stderr).strip
       when "process"
-        log_file = File.join(config[:host_path], "log", "development.log")
+        log_file = File.expand_path(config[:log_file].presence || "log/development.log", config[:host_path])
         if File.exist?(log_file)
           `tail -n #{lines} #{Shellwords.escape(log_file)}`
         else
@@ -189,6 +201,15 @@ class DockerService
 
     private
 
+    # Tab a card lives under: PYR client checkouts (~/platform/clients/...) are
+    # iCentris work; everything else is a personal app. extra_clients.yml can
+    # override with an explicit `group:`.
+    def client_group(config)
+      return config[:group].to_s if config[:group].present?
+
+      config[:host_path].to_s.include?("/platform/clients/") ? "icentris" : "personal"
+    end
+
     # Service arguments for `docker compose` lifecycle commands. When a client sets
     # `compose_all: true`, we operate on the whole compose project (no service filter)
     # so multi-service apps bring up every service — including front proxies like the
@@ -201,7 +222,7 @@ class DockerService
     end
 
     def process_status(port)
-      out, _st = Open3.capture2("bash", "-c", "lsof -ti :#{port} 2>/dev/null")
+      out, _st = Open3.capture2("bash", "-c", "lsof -ti tcp:#{port} -sTCP:LISTEN 2>/dev/null")
       if out.strip.present?
         [ "running", "Up (pid #{out.strip.split("\n").first})" ]
       else
@@ -269,7 +290,7 @@ class DockerService
     end
 
     def client_definitions
-      pyr_client_definitions.merge(extra_client_definitions)
+      pyr_client_definitions.merge(extra_client_definitions).except(*HIDDEN_CLIENTS)
     end
 
     def pyr_client_definitions
@@ -302,6 +323,16 @@ class DockerService
       end
 
       clients
+    end
+
+    # Card branding (logo + colours) per client from config/brands.yml.
+    def brands
+      return {} unless File.exist?(BRANDS_FILE)
+
+      YAML.safe_load(File.read(BRANDS_FILE)) || {}
+    rescue => e
+      Rails.logger.error("Failed to load brands.yml: #{e.message}")
+      {}
     end
 
     def dev_logins

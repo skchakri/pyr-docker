@@ -21,3 +21,31 @@ dashboard:
   type: process
   start_cmd: "PORT=3000 bin/rails server -b 0.0.0.0 -p 3000 > log/dashboard.log 2>&1"
 
+
+stl_generator:
+  name: stl_generator
+  # bin/dev runs Rails API (:1610, Solid Queue in Puma) + Vite (:5180).
+  port: "5180"
+  host_path: /home/kalyan/platform/skchakri/stl_generator
+  database: stl_generator_v2_development
+  type: process
+  access_url: "http://localhost:5180/"
+  log_file: backend/log/dashboard.log
+  # env -i: the dashboard's own Ruby (GEM_HOME/BUNDLE_*) must not leak into the app's rvm Ruby.
+  start_cmd: "env -i HOME=\"$HOME\" PATH=/usr/local/bin:/usr/bin:/bin TERM=xterm bash -lc '. ~/.nvm/nvm.sh && tail -f /dev/null | bin/dev' > backend/log/dashboard.log 2>&1"
+
+ai_service:
+  name: ai_service
+  group: icentris
+  # bin/dev defaults to PORT 3000, which the dashboard itself uses — run on 3050.
+  port: "3050"
+  host_path: /home/kalyan/platform/skchakri/ai_service
+  database: ai_service_development
+  type: process
+  access_url: "http://localhost:3050/"
+  # Log lives outside the repo: tailwind v4 watches the project tree and a log
+  # inside it retriggers a rebuild on every write.
+  log_file: /tmp/dashboard_ai_service.log
+  # env -i: the dashboard's own Ruby (GEM_HOME/BUNDLE_*) must not leak into Ruby 4.0.9.
+  # tail -f /dev/null keeps stdin open — tailwindcss:watch exits (taking foreman down) on stdin EOF.
+  start_cmd: "env -i HOME=\"$HOME\" PATH=/usr/local/bin:/usr/bin:/bin TERM=xterm bash -lc '. ~/.nvm/nvm.sh && tail -f /dev/null | PORT=3050 ~/.rvm/bin/rvm 4.0.9 do bin/dev' > /tmp/dashboard_ai_service.log 2>&1"

@@ -203,6 +203,10 @@
     <div class="spinner" style="width:20px;height:20px;border:2px solid transparent;border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;"></div>
     Loading clients...
   </div>
+  <div class="group-tabs" id="groupTabs" role="tablist" aria-label="App group">
+    <button class="group-tab" role="tab" data-group="icentris" onclick="setGroup('icentris')">iCentris <span class="group-count" data-count="icentris"></span></button>
+    <button class="group-tab" role="tab" data-group="personal" onclick="setGroup('personal')">Personal <span class="group-count" data-count="personal"></span></button>
+  </div>
   <div class="grid" id="grid" style="display:none;"></div>
   <div class="terminal-panel" id="terminalPanel">
     <div class="terminal-tab-bar">
@@ -227,7 +231,12 @@
   let refreshTimer = null;
   const SESSION_KEY = 'pyr_open_terminals'; // localStorage key
   const FREQ_KEY    = 'pyr_action_freq';    // {client: {action: count}}
-  const ORDER_KEY   = 'pyr_card_order';     // [clientName, ...] manual drag order
+  const ORDER_KEY   = 'pyr_card_order_v2';  // [clientName, ...] manual drag order
+  const LEGACY_ORDER_KEY = 'pyr_card_order';
+  // Order used until cards are dragged. Personal follows the order asked for;
+  // iCentris keeps any order dragged before v2 (see getCardOrder).
+  const PERSONAL_ORDER = ['ownsites', 'profvault', 'wanderply', 'brand_reel', 'homeroom', 'myjira', 'stl_generator', 'dashboard'];
+  const DEFAULT_ORDER  = ['stampinup', 'avon', 'naturessunshine', 'monat', 'zevents', 'ai_service'].concat(PERSONAL_ORDER);
   const BUTTONS_KEY = 'pyr_card_buttons';   // {client: {action: false}} hidden buttons
   const QUEUE_KEY   = 'pyr_input_queues';   // {client: {type: textareaContent}}
   const CLAUDE_SETTINGS_KEY = 'pyr_claude_settings'; // {client: {model, effort}}
@@ -291,8 +300,16 @@
   }
 
   function getCardOrder() {
-    try { return JSON.parse(localStorage.getItem(ORDER_KEY) || '[]'); }
-    catch(e) { return []; }
+    try {
+      const saved = localStorage.getItem(ORDER_KEY);
+      if (saved) return JSON.parse(saved);
+      // First load on v2: carry over the old dragged iCentris order, then defaults.
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_ORDER_KEY) || '[]')
+        .filter(function(n) { return PERSONAL_ORDER.indexOf(n) < 0; });
+      const merged = legacy.concat(DEFAULT_ORDER.filter(function(n) { return legacy.indexOf(n) < 0; }));
+      localStorage.setItem(ORDER_KEY, JSON.stringify(merged));
+      return merged;
+    } catch(e) { return DEFAULT_ORDER.slice(); }
   }
   function saveCardOrder(arr) {
     try { localStorage.setItem(ORDER_KEY, JSON.stringify(arr)); } catch(e) {}
@@ -459,6 +476,7 @@
 
     // Target set: 'start' affects everything not running; 'stop'/'restart' affect running.
     const targets = clients.filter(function(c) {
+      if ((c.group || 'icentris') !== currentGroup) return false;
       return action === 'start' ? c.state !== 'running' : c.state === 'running';
     });
     if (targets.length === 0) {
@@ -610,8 +628,35 @@
     return total;
   }
 
+  const GROUP_KEY = 'pyr_dashboard_group';
+  let currentGroup = (function() {
+    try { return localStorage.getItem(GROUP_KEY) || 'icentris'; } catch(e) { return 'icentris'; }
+  })();
+
+  // Cards already on screen — lets the entrance animation run only for cards
+  // that are new to the view, not on every 8s poll re-render.
+  let seenCards = new Set();
+
+  function setGroup(group) {
+    if (group === currentGroup) return;
+    currentGroup = group;
+    seenCards = new Set();
+    try { localStorage.setItem(GROUP_KEY, group); } catch(e) {}
+    renderClients(clients);
+  }
+
   function renderClients(data) {
     clients = data;
+    document.getElementById('groupTabs').dataset.active = currentGroup;
+    document.querySelectorAll('.group-tab').forEach(function(t) {
+      const active = t.dataset.group === currentGroup;
+      t.classList.toggle('active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('.group-count').forEach(function(el) {
+      el.textContent = data.filter(function(c) { return (c.group || 'icentris') === el.dataset.count; }).length;
+    });
+    data = data.filter(function(c) { return (c.group || 'icentris') === currentGroup; });
     const grid = document.getElementById('grid');
     document.getElementById('loading').style.display = 'none';
     grid.style.display = 'flex';
@@ -636,6 +681,7 @@
       return clientFreqTotal(b.name, allFreq) - clientFreqTotal(a.name, allFreq);
     });
 
+    let enterIdx = 0;
     grid.innerHTML = sortedData.map(function(c) {
       const isRunning = c.state === 'running';
       const lifecycle = isRunning
@@ -672,12 +718,23 @@
           '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>' +
         '</button>';
 
-      const cardCls = 'card' + (openSettings.has(c.name) ? ' settings-open' : '');
+      const isNew = !seenCards.has(c.name);
+      const cardCls = 'card' + (openSettings.has(c.name) ? ' settings-open' : '') +
+        (isRunning ? ' is-running' : '') + (isNew ? ' card-enter' : '');
+      const b = c.brand;
+      let cardStyle = isNew ? '--i:' + (enterIdx++) + ';' : '';
+      if (b) cardStyle += '--b-bg:' + b.bg + ';--b-fg:' + b.fg + ';--b-accent:' + b.accent + ';';
+      const toneAttr = b ? ' data-brand data-tone="' + (b.tone || 'dark') + '"' : '';
+      const titleHtml = b && b.logo
+        ? '<h3 class="card-logo' + (b.wordmark ? ' is-wordmark' : '') + '" title="' + c.name + '">' +
+            '<img src="/logos/' + b.logo + '" alt="' + c.name + '"' + (b.logo_h ? ' style="height:' + b.logo_h + 'px"' : '') + '>' +
+            (b.wordmark ? '' : '<span>' + c.name.replace(/_/g, ' ') + '</span>') + '</h3>'
+        : '<h3>' + c.name + '</h3>';
 
-      return '<div class="' + cardCls + '" draggable="true" data-client="' + c.name + '">' +
+      return '<div class="' + cardCls + '"' + (cardStyle ? ' style="' + cardStyle + '"' : '') + toneAttr + ' draggable="true" data-client="' + c.name + '">' +
         '<div class="card-header">' +
           '<div class="card-title">' +
-            '<h3>' + c.name + '</h3>' + getStateBadge(c.state, c.serving) +
+            titleHtml + getStateBadge(c.state, c.serving) +
           '</div>' +
           gearHtml +
         '</div>' +
@@ -696,18 +753,19 @@
         settingsHtml +
         '</div>';
     }).join('');
+    sortedData.forEach(function(c) { seenCards.add(c.name); });
   }
 
   // ---- Tabbed Terminal System ----
   // terminals[clientName][type] = { term, fitAddon, resizeObserver, subscription, paneEl, bodyEl }
   const TERM_THEME = {
-    background: '#0c0e14', foreground: '#e1e4ed', cursor: '#6c8aff',
-    selectionBackground: 'rgba(108,138,255,0.3)',
-    black: '#1a1e2a', red: '#f87171', green: '#34d399', yellow: '#fbbf24',
-    blue: '#6c8aff', magenta: '#c084fc', cyan: '#22d3ee', white: '#e1e4ed',
-    brightBlack: '#7a8198', brightRed: '#fca5a5', brightGreen: '#6ee7b7',
-    brightYellow: '#fde68a', brightBlue: '#93b4ff', brightMagenta: '#d8b4fe',
-    brightCyan: '#67e8f9', brightWhite: '#f8fafc'
+    background: '#27282c', foreground: '#f5f5f6', cursor: '#e4e4e7',
+    selectionBackground: 'rgba(228,228,231,0.25)',
+    black: '#3a3b41', red: '#f07178', green: '#7ccf94', yellow: '#e5c35c',
+    blue: '#8fb3e8', magenta: '#c8a2e0', cyan: '#7fd0d0', white: '#e4e4e7',
+    brightBlack: '#7a7c84', brightRed: '#ee8a90', brightGreen: '#aed4a9',
+    brightYellow: '#e8cc85', brightBlue: '#adbfd1', brightMagenta: '#ccb7d9',
+    brightCyan: '#aad4ce', brightWhite: '#ffffff'
   };
 
   let activeClient = null;
@@ -1607,7 +1665,9 @@
       if (!dragState.before) toIdx += 1;
 
       currentOrder.splice(toIdx, 0, dragState.client);
-      saveCardOrder(currentOrder);
+      // Only the active tab's cards are in the DOM — keep the other tab's saved order.
+      const hidden = getCardOrder().filter(function(n) { return currentOrder.indexOf(n) < 0; });
+      saveCardOrder(currentOrder.concat(hidden));
       renderClients(clients);
     });
   }

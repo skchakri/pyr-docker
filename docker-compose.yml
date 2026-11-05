@@ -9,7 +9,7 @@ x-common: &common
   # be silently overridden and never used. Keep per-client volumes per-service.
 
 # Shared bits for the standalone host-networked apps (zevents, profvault, myjira,
-# planmytrip, quapt_agents). Each brings its own Dockerfile + volumes, so only the
+# wanderply, homeroom, brand_reel). Each brings its own Dockerfile + volumes, so only the
 # safely-shareable keys live here.
 x-host-rails8: &host-rails8
   network_mode: host
@@ -218,21 +218,21 @@ services:
       REDIS_URL: redis://127.0.0.1:6379/12
     command: /opt/pyr-docker/entrypoint-myjira.sh
 
-  # ==================== HEARTH (1400) ====================
+  # ==================== HOMEROOM (1400) ====================
   # Family app (Rails 8.1, Ruby 3.3.6, Postgres + Redis from dev_datastack).
   # Runs web + Solid Queue jobs; bound to 0.0.0.0 so the Android app on the
   # home Wi-Fi can reach it at http://192.168.86.23:1400.
-  hearth:
+  homeroom:
     <<: *host-rails8
     build:
       context: .
-      dockerfile: Dockerfile.hearth
-    container_name: pyr-hearth
+      dockerfile: Dockerfile.homeroom
+    container_name: pyr-homeroom
     working_dir: /rails
     volumes:
       - /home/kalyan/platform/skchakri/hearth:/rails
-      - hearth_bundle_cache:/usr/local/bundle
-      - ./entrypoint-hearth.sh:/opt/pyr-docker/entrypoint-hearth.sh:ro
+      - homeroom_bundle_cache:/usr/local/bundle
+      - ./entrypoint-homeroom.sh:/opt/pyr-docker/entrypoint-homeroom.sh:ro
     environment:
       RAILS_ENV: development
       PORT: "1400"
@@ -246,21 +246,21 @@ services:
       DB_PASSWORD: password
       REDIS_URL: redis://127.0.0.1:6379/2
       DATABASE_NAME: hearth_development
-    command: /opt/pyr-docker/entrypoint-hearth.sh
+    command: /opt/pyr-docker/entrypoint-homeroom.sh
 
-  # ==================== PLAN MY TRIP (3010) ====================
-  planmytrip:
+  # ==================== WANDERPLY (3010) ====================
+  wanderply:
     <<: *host-rails8
     build:
       context: .
-      dockerfile: Dockerfile.plan_my_trip
-    container_name: pyr-planmytrip
+      dockerfile: Dockerfile.wanderply
+    container_name: pyr-wanderply
     working_dir: /rails
     volumes:
       - /home/kalyan/platform/skchakri/plan_my_trip:/rails
-      - planmytrip_bundle_cache:/usr/local/bundle
+      - wanderply_bundle_cache:/usr/local/bundle
       - ~/.ssh:/root/.ssh:ro
-      - ./entrypoint-plan_my_trip.sh:/opt/pyr-docker/entrypoint-plan_my_trip.sh:ro
+      - ./entrypoint-wanderply.sh:/opt/pyr-docker/entrypoint-wanderply.sh:ro
       # Host Claude Code CLI + auth, so services with provider=claude_cli
       # (DestinationBrief, RouteLandmarksBuilder, TripStructureBuilder,
       # ItineraryBuilder) bill against the operator's subscription instead
@@ -279,35 +279,7 @@ services:
       # API-key fallback for prompts configured with provider=anthropic.
       # Left blank → those services fall back to deterministic skeletons.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-    command: /opt/pyr-docker/entrypoint-plan_my_trip.sh
-
-  # ==================== QUAPT AGENTS (3030) ====================
-  quapt_agents:
-    <<: *host-rails8
-    build:
-      context: .
-      dockerfile: Dockerfile.quapt_agents
-    container_name: pyr-quapt-agents
-    working_dir: /rails
-    volumes:
-      - /home/kalyan/platform/quapt/poc:/rails
-      - quapt_agents_bundle_cache:/usr/local/bundle
-      - ~/.ssh:/root/.ssh:ro
-      - ./entrypoint-quapt_agents.sh:/opt/pyr-docker/entrypoint-quapt_agents.sh:ro
-    environment:
-      RAILS_ENV: development
-      PORT: "3030"
-      # Shared dev_datastack Postgres (read by config/database.yml).
-      PGHOST: 127.0.0.1
-      PGPORT: "5432"
-      PGUSER: root
-      PGPASSWORD: password
-      # Action Cable (live Turbo Streams) + Redis velocity counter.
-      REDIS_URL: redis://127.0.0.1:6379/14
-      # Powers the Claude agentic loop (anthropic gem). Inherited from host env.
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
-    command: /opt/pyr-docker/entrypoint-quapt_agents.sh
+    command: /opt/pyr-docker/entrypoint-wanderply.sh
 
   # ==================== BRANDREEL (3040) ====================
   # Next.js 16 + Remotion 4 video studio. Not a Rails app — runs `npm run dev`
@@ -348,13 +320,12 @@ services:
 
 volumes:
   bundle_cache:
-  quapt_agents_bundle_cache:
   zevents_bundle_cache:
   zevents_node_modules:
   profvault_bundle_cache:
   profvault_jobspy_venv:
   myjira_bundle_cache:
   myjira_playwright_cache:
-  hearth_bundle_cache:
-  planmytrip_bundle_cache:
+  homeroom_bundle_cache:
+  wanderply_bundle_cache:
   brand_reel_node_modules:
