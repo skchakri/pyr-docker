@@ -51,6 +51,8 @@ services:
       DATABASE_NAME: pyr_stampinup_dev
       MONGODB_URI: mongodb://root:password@127.0.0.1:27017/pyr_stampinup_development?authSource=admin
       REDIS_URL: redis://127.0.0.1:6379/0
+      AI_SERVICE_TOKEN: ${STAMPINUP_AI_SERVICE_TOKEN:-}
+      DEVELOPMENT_SERVER_URL: http://stup.local
     command: *common-command
 
   # ==================== PARTYLITE (3005) ====================
@@ -231,7 +233,7 @@ services:
     container_name: pyr-homeroom
     working_dir: /rails
     volumes:
-      - /home/kalyan/platform/skchakri/hearth:/rails
+      - /home/kalyan/platform/skchakri/homeroom:/rails
       - homeroom_bundle_cache:/usr/local/bundle
       - ./entrypoint-homeroom.sh:/opt/pyr-docker/entrypoint-homeroom.sh:ro
     environment:

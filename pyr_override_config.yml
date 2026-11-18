@@ -7,9 +7,12 @@ development:
   mongodb_auth_source: admin
   mongodb_user: root
   mongodb_password: password
+  # Local only: stay signed in through long demos (core default is 30).
+  default_devise_session_timeout_in_minutes: 480
   # Each client's container serves on its own PORT (avon 3001, monat 3004, ...); links and images built
   # with PyrCore::CommonUtils.server_url use it (needs development_server_url support in core).
-  development_server_url: http://localhost:<%= ENV['PORT'].presence || 3000 %>
+  # DEVELOPMENT_SERVER_URL sets it per container (e.g. http://stup.local behind nginx).
+  development_server_url: <%= ENV['DEVELOPMENT_SERVER_URL'].presence || "http://localhost:#{ENV['PORT'].presence || 3000}" %>
 
 test:
   mongodb_auth_source: admin
