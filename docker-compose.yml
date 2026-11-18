@@ -258,7 +258,7 @@ services:
     container_name: pyr-wanderply
     working_dir: /rails
     volumes:
-      - /home/kalyan/platform/skchakri/plan_my_trip:/rails
+      - /home/kalyan/platform/skchakri/wanderply:/rails
       - wanderply_bundle_cache:/usr/local/bundle
       - ~/.ssh:/root/.ssh:ro
       - ./entrypoint-wanderply.sh:/opt/pyr-docker/entrypoint-wanderply.sh:ro
