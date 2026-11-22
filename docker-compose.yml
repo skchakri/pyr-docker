@@ -211,6 +211,13 @@ services:
       - /home/kalyan/.claude:/root/.claude
       # Persist Playwright's chromium download outside the container.
       - myjira_playwright_cache:/root/.cache/ms-playwright
+      # GitHub CLI for the Work Queue "Merge PR" button; token via .env.myjira.
+      - /usr/bin/gh:/usr/local/bin/gh:ro
+      - /home/kalyan/platform:/home/kalyan/platform
+      - /home/kalyan/.claude:/home/kalyan/.claude
+    env_file:
+      - path: .env.myjira
+        required: false
     environment:
       RAILS_ENV: development
       PORT: "1200"
